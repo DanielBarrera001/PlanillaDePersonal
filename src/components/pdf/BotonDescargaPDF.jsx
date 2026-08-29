@@ -5,15 +5,18 @@ import { ReciboHonorariosPDF } from './ReciboHonorariosPDF';
 import { Download, FileText } from 'lucide-react';
 
 export const BotonDescargaPDF = ({ tipoRecibo, empleado, pago, monto, montoLetras }) => {
+  if (!empleado || !pago) return null;
+
   const Documento = tipoRecibo === 'honorarios' ? (
     <ReciboHonorariosPDF empleado={empleado} monto={monto} montoLetras={montoLetras} />
   ) : (
     <ReciboPrestacionPDF empleado={empleado} pago={pago} />
   );
 
+  const nombreEmpleado = empleado.nombre_completo ? empleado.nombre_completo.replace(/\s+/g, '_') : 'Empleado';
   const nombreArchivo = tipoRecibo === 'honorarios'
-    ? `Recibo_Honorarios_${empleado.nombre_completo.replace(/\s+/g, '_')}.pdf`
-    : `Recibo_${pago?.tipo_pago || 'Pago'}_${empleado.nombre_completo.replace(/\s+/g, '_')}.pdf`;
+    ? `Recibo_Honorarios_${nombreEmpleado}.pdf`
+    : `Recibo_${pago?.tipo_pago || 'Pago'}_${nombreEmpleado}.pdf`;
 
   return (
     <PDFDownloadLink

@@ -92,7 +92,8 @@ export const ReciboPrestacionPDF = ({ empleado, pago }) => {
     switch (tipo) {
       case 'aguinaldo': return 'Comprobante de Pago de Aguinaldo';
       case 'vacaciones': return 'Comprobante de Pago de Vacaciones';
-      case 'quincena_25': return 'Comprobante de Pago Quincena 25';
+      case 'quincena_25': return 'Comprobante de Pago Quincenal';
+      case 'indemnizacion': return 'Comprobante de Pago de Indemnización';
       default: return 'Comprobante de Pago';
     }
   };
@@ -118,10 +119,15 @@ export const ReciboPrestacionPDF = ({ empleado, pago }) => {
             <Text style={styles.label}>Cargo:</Text>
             <Text style={styles.value}>{empleado.cargo || 'N/A'}</Text>
           </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Fecha de Ingreso:</Text>
-            <Text style={styles.value}>{empleado.fecha_ingreso}</Text>
-          </View>
+          
+          {/* Ocultar Fecha de Ingreso si es quincenal */}
+          {['aguinaldo', 'vacaciones', 'indemnizacion'].includes(pago.tipo_pago) && (
+            <View style={styles.row}>
+              <Text style={styles.label}>Fecha de Ingreso:</Text>
+              <Text style={styles.value}>{empleado.fecha_ingreso}</Text>
+            </View>
+          )}
+
           <View style={styles.row}>
             <Text style={styles.label}>Fecha de Emisión:</Text>
             <Text style={styles.value}>{pago.fecha_pago}</Text>

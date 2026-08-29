@@ -12,17 +12,28 @@ export const FormularioPagos = ({ empleados = [] }) => {
   const [pagoCalculado, setPagoCalculado] = useState(null);
   const [guardando, setGuardando] = useState(false);
 
-  const empleado = empleados.find((e) => e.id === Number(empleadoSeleccionado));
+  // Comparación directa de String (Soporta UUIDs de Supabase)
+  const empleado = empleados.find((e) => String(e.id) === String(empleadoSeleccionado));
 
   const handleCalcular = () => {
-    if (!empleado) return;
+    if (!empleado) {
+      alert('Selecciona un empleado de la lista para continuar.');
+      return;
+    }
 
     let resultado = {};
-    const adelantoNum = Number(adelanto) || 0;
+    const adelantoNum = parseFloat(adelanto) || 0;
+    const salarioBaseNum = parseFloat(empleado.salario_base) || 0;
 
     if (tipoPago === 'honorarios') {
-      const montoNum = Number(montoHonorario) || 0;
+      const montoNum = parseFloat(montoHonorario) || 0;
+      if (montoNum <= 0) {
+        alert('Ingresa un monto válido para los honorarios.');
+        return;
+      }
+
       resultado = {
+        tipo_pago: 'honorarios',
         monto_bruto: montoNum,
         monto_neto: montoNum - adelantoNum,
         adelanto_salario: adelantoNum,
@@ -31,23 +42,23 @@ export const FormularioPagos = ({ empleados = [] }) => {
     } else {
       let resCalc = {};
       if (tipoPago === 'aguinaldo') {
-        resCalc = calcularAguinaldo(empleado.salario_base, empleado.fecha_ingreso, adelantoNum);
+        resCalc = calcularAguinaldo(salarioBaseNum, empleado.fecha_ingreso, adelantoNum);
       } else if (tipoPago === 'vacaciones') {
-        resCalc = calcularVacaciones(empleado.salario_base, 30, adelantoNum);
+        resCalc = calcularVacaciones(salarioBaseNum, 30, adelantoNum);
       } else if (tipoPago === 'quincena_25') {
-        resCalc = calcularQuincena25(empleado.salario_base, empleado.fecha_ingreso, adelantoNum);
+        resCalc = calcularQuincena25(salarioBaseNum, empleado.fecha_ingreso, adelantoNum);
       }
 
       resultado = {
         tipo_pago: tipoPago,
         fecha_pago: new Date().toISOString().split('T')[0],
-        monto_bruto: resCalc.montoBruto || resCalc.salario15Dias,
+        monto_bruto: resCalc.montoBruto || resCalc.salario15Dias || 0,
         monto_bono_vacaciones: resCalc.montoBono || 0,
         descuento_renta: resCalc.descuentoRenta || 0,
         adelanto_salario: adelantoNum,
-        monto_neto: resCalc.montoNeto,
+        monto_neto: resCalc.montoNeto || 0,
         dias_calculados: resCalc.diasCorresponden || 15,
-        monto_letras: numeroALetras(resCalc.montoNeto),
+        monto_letras: numeroALetras(resCalc.montoNeto || 0),
       };
     }
 
@@ -97,7 +108,7 @@ export const FormularioPagos = ({ empleados = [] }) => {
             <option value="">-- Selecciona un colaborador --</option>
             {empleados.map((emp) => (
               <option key={emp.id} value={emp.id}>
-                {emp.nombre_completo} ({emp.tipo_contrato === 'servicios' ? 'Servicios / Honorarios' : 'Planilla'})
+                {emp.nombre_completo} ({emp.tipo_empleado === 'honorarios' ? 'Servicios / Honorarios' : 'Planilla'})
               </option>
             ))}
           </select>
@@ -149,15 +160,16 @@ export const FormularioPagos = ({ empleados = [] }) => {
         )}
 
         <button
+          type="button"
           onClick={handleCalcular}
           disabled={!empleadoSeleccionado}
-          className="w-full py-2.5 bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-900 disabled:opacity-50"
+          className="w-full py-2.5 bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-900 disabled:opacity-50 transition-colors"
         >
           Calcular y Preparar Recibo
         </button>
       </div>
 
-      {pagoCalculado && (
+      {pagoCalculado && empleado && (
         <div className="p-4 bg-gray-50 border rounded-lg space-y-4">
           <h3 className="font-semibold text-gray-800">Resumen del Recibo</h3>
           <div className="text-sm space-y-1">
@@ -180,9 +192,10 @@ export const FormularioPagos = ({ empleados = [] }) => {
             />
 
             <button
+              type="button"
               onClick={handleGuardarEnSupabase}
               disabled={guardando}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-100"
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
             >
               {guardando ? 'Guardando...' : 'Guardar en Historial'}
             </button>
