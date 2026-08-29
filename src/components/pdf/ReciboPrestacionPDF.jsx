@@ -133,22 +133,33 @@ export const ReciboPrestacionPDF = ({ empleado, pago }) => {
             <Text style={styles.col}>Concepto</Text>
             <Text style={[styles.col, styles.textRight]}>Monto</Text>
           </View>
+          
           <View style={styles.tableRow}>
             <Text style={styles.col}>Monto Devengado ({pago.dias_calculados || 0} días)</Text>
             <Text style={[styles.col, styles.textRight]}>${Number(pago.monto_bruto).toFixed(2)}</Text>
           </View>
-          {pago.monto_bono_vacaciones > 0 && (
+
+          {Number(pago.monto_bono_vacaciones) > 0 && (
             <View style={styles.tableRow}>
               <Text style={styles.col}>Bono por Vacaciones (30%)</Text>
               <Text style={[styles.col, styles.textRight]}>${Number(pago.monto_bono_vacaciones).toFixed(2)}</Text>
             </View>
           )}
-          {pago.descuento_renta > 0 && (
+
+          {Number(pago.descuento_renta) > 0 && (
             <View style={styles.tableRow}>
               <Text style={styles.col}>Retención Renta</Text>
               <Text style={[styles.col, styles.textRight]}>-${Number(pago.descuento_renta).toFixed(2)}</Text>
             </View>
           )}
+
+          {Number(pago.adelanto_salario) > 0 && (
+            <View style={styles.tableRow}>
+              <Text style={styles.col}>Adelanto Salarial / Descuento</Text>
+              <Text style={[styles.col, styles.textRight]}>-${Number(pago.adelanto_salario).toFixed(2)}</Text>
+            </View>
+          )}
+
           <View style={[styles.tableRow, styles.totalRow]}>
             <Text style={styles.col}>LÍQUIDO A RECIBIR</Text>
             <Text style={[styles.col, styles.textRight]}>${Number(pago.monto_neto).toFixed(2)}</Text>
