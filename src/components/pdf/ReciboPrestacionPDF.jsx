@@ -152,6 +152,20 @@ export const ReciboPrestacionPDF = ({ empleado, pago }) => {
             </View>
           )}
 
+          {Number(pago.descuento_isss) > 0 && (
+            <View style={styles.tableRow}>
+              <Text style={styles.col}>Descuento ISSS (3%)</Text>
+              <Text style={[styles.col, styles.textRight]}>-${Number(pago.descuento_isss).toFixed(2)}</Text>
+            </View>
+          )}
+
+          {Number(pago.descuento_afp) > 0 && (
+            <View style={styles.tableRow}>
+              <Text style={styles.col}>Descuento AFP (7.25%)</Text>
+              <Text style={[styles.col, styles.textRight]}>-${Number(pago.descuento_afp).toFixed(2)}</Text>
+            </View>
+          )}
+
           {Number(pago.descuento_renta) > 0 && (
             <View style={styles.tableRow}>
               <Text style={styles.col}>Retención Renta</Text>

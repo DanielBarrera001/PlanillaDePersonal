@@ -54,6 +54,8 @@ export const FormularioPagos = ({ empleados = [] }) => {
         fecha_pago: new Date().toISOString().split('T')[0],
         monto_bruto: resCalc.montoBruto || resCalc.salario15Dias || 0,
         monto_bono_vacaciones: resCalc.montoBono || 0,
+        descuento_isss: resCalc.descuentoISSS || 0, // Nuevo
+        descuento_afp: resCalc.descuentoAFP || 0,   // Nuevo
         descuento_renta: resCalc.descuentoRenta || 0,
         adelanto_salario: adelantoNum,
         monto_neto: resCalc.montoNeto || 0,
@@ -78,6 +80,8 @@ export const FormularioPagos = ({ empleados = [] }) => {
         descuento_renta: pagoCalculado.descuento_renta || 0,
         adelanto_salario: pagoCalculado.adelanto_salario || 0,
         monto_neto: pagoCalculado.monto_neto,
+        descuento_isss: pagoCalculado.descuento_isss || 0,
+        descuento_afp: pagoCalculado.descuento_afp || 0,
         fecha_pago: pagoCalculado.fecha_pago || new Date().toISOString().split('T')[0],
       },
     ]);

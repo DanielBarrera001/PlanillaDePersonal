@@ -57,23 +57,23 @@ export function calcularVacaciones(salarioMensual, porcentajeBono = 30, adelanto
 
 // 3. CÁLCULO DE QUINCENA 25 (Con Adelantos)
 export function calcularQuincena25(salarioMensual, fechaIngreso, adelantos = 0) {
-  const ingreso = new Date(fechaIngreso);
-  const hoy = new Date();
-  const diasTrabajados = Math.floor((hoy - ingreso) / (1000 * 60 * 60 * 24));
-  const anosAntiguedad = diasTrabajados / 365;
+  // Monto base de una quincena (15 días)
+  let montoBruto = salarioMensual / 2; 
 
-  let montoBase = salarioMensual * 0.5;
+  // ISSS (3%) - Calculado sobre el techo máximo de $1000 al mes ($500 por quincena)
+  const baseISSS = Math.min(montoBruto, 500);
+  const descuentoISSS = baseISSS * 0.03;
 
-  if (anosAntiguedad < 1) {
-    montoBase = (montoBase / 365) * diasTrabajados;
-  }
+  // AFP (7.25%) - Calculado sobre el monto bruto total
+  const descuentoAFP = montoBruto * 0.0725;
 
-  const montoNeto = montoBase - adelantos;
+  const montoNeto = montoBruto - descuentoISSS - descuentoAFP - adelantos;
 
   return {
-    montoBruto: Number(montoBase.toFixed(2)),
+    montoBruto: Number(montoBruto.toFixed(2)),
+    descuentoISSS: Number(descuentoISSS.toFixed(2)),
+    descuentoAFP: Number(descuentoAFP.toFixed(2)),
     adelantos: Number(adelantos),
     montoNeto: Number(montoNeto.toFixed(2)),
-    exentoImpuestos: salarioMensual <= 1500
   };
 }
