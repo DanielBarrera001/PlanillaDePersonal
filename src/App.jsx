@@ -80,7 +80,7 @@ export default function App() {
               R
             </div>
             <div>
-              <h1 className="text-xl font-extrabold text-slate-800 tracking-tight">Centro de Copias La Rana</h1>
+              <h1 className="text-xl font-extrabold text-slate-800 tracking-tight">Centro de Copias La Ranita</h1>
               <p className="text-xs text-slate-500 font-medium">{sesion.user.email}</p>
             </div>
           </div>
