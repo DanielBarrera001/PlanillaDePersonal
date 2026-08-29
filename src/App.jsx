@@ -10,7 +10,7 @@ export default function App() {
   const [sesion, setSesion] = useState(null);
   const [empleados, setEmpleados] = useState([]);
   const [cargando, setCargando] = useState(true);
-  const [vistaActual, setVistaActual] = useState('generar'); // 'generar', 'historial' o 'personal'
+  const [vistaActual, setVistaActual] = useState('generar');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -46,63 +46,74 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 p-8">
-      <header className="max-w-5xl mx-auto mb-6 flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-sm">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900">Centro de Copias La Rana</h1>
-          <p className="text-xs text-slate-500">{sesion.user.email}</p>
-        </div>
-        
-        <div className="flex flex-wrap justify-center gap-2">
-          <button
-            onClick={() => setVistaActual('generar')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              vistaActual === 'generar' 
-                ? 'bg-slate-800 text-white' 
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            <FilePlus className="w-4 h-4" />
-            Generar Pago
-          </button>
+    <div className="min-h-screen bg-slate-50">
+      {/* Barra de Navegación Superior */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center font-bold text-xl">
+              R
+            </div>
+            <div>
+              <h1 className="text-xl font-extrabold text-slate-800 tracking-tight">Centro de Copias La Rana</h1>
+              <p className="text-xs text-slate-500 font-medium">{sesion.user.email}</p>
+            </div>
+          </div>
           
-          <button
-            onClick={() => setVistaActual('historial')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              vistaActual === 'historial' 
-                ? 'bg-slate-800 text-white' 
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            <History className="w-4 h-4" />
-            Historial
-          </button>
+          <div className="flex flex-wrap justify-center gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <button
+              onClick={() => setVistaActual('generar')}
+              className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+                vistaActual === 'generar' 
+                  ? 'bg-emerald-600 text-white shadow-md' 
+                  : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50'
+              }`}
+            >
+              <FilePlus className="w-4 h-4" />
+              Generar Pago
+            </button>
+            
+            <button
+              onClick={() => setVistaActual('historial')}
+              className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+                vistaActual === 'historial' 
+                  ? 'bg-emerald-600 text-white shadow-md' 
+                  : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50'
+              }`}
+            >
+              <History className="w-4 h-4" />
+              Historial
+            </button>
+
+            <button
+              onClick={() => setVistaActual('personal')}
+              className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+                vistaActual === 'personal' 
+                  ? 'bg-emerald-600 text-white shadow-md' 
+                  : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              Personal
+            </button>
+          </div>
 
           <button
-            onClick={() => setVistaActual('personal')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              vistaActual === 'personal' 
-                ? 'bg-slate-800 text-white' 
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
+            onClick={handleCerrarSesion}
+            className="flex items-center gap-2 text-sm text-red-500 hover:text-red-700 font-bold px-4 py-2 rounded-lg hover:bg-red-50 transition-colors"
           >
-            <Users className="w-4 h-4" />
-            Personal
+            <LogOut className="w-4 h-4" />
+            Salir
           </button>
         </div>
-
-        <button
-          onClick={handleCerrarSesion}
-          className="flex items-center gap-1 text-sm text-red-600 hover:text-red-800 font-medium px-3 py-1.5 rounded-lg border border-red-200 hover:bg-red-50 transition-colors"
-        >
-          <LogOut className="w-4 h-4" />
-          Salir
-        </button>
       </header>
 
-      <main>
+      {/* Contenedor Principal Ensanchado */}
+      <main className="max-w-7xl mx-auto px-6 py-8">
         {cargando ? (
-          <p className="text-center text-gray-500">Cargando sistema...</p>
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-500 border-t-transparent"></div>
+          </div>
         ) : (
           vistaActual === 'generar' 
             ? <FormularioPagos empleados={empleados} /> 
