@@ -7,7 +7,7 @@ import { Calculator, Receipt } from 'lucide-react';
 
 export const FormularioPagos = ({ empleados = [] }) => {
   const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState('');
-  const [tipoPago, setTipoPago] = useState('aguinaldo');
+  const [tipoPago, setTipoPago] = useState('quincena');
   const [adelanto, setAdelanto] = useState(0);
   const [montoHonorario, setMontoHonorario] = useState(0);
   const [pagoCalculado, setPagoCalculado] = useState(null);
@@ -47,6 +47,21 @@ export const FormularioPagos = ({ empleados = [] }) => {
         resCalc = calcularVacaciones(salarioBaseNum, 30, adelantoNum);
       } else if (tipoPago === 'quincena_25') {
         resCalc = calcularQuincena25(salarioBaseNum, empleado.fecha_ingreso, adelantoNum);
+      } else if (tipoPago === 'quincena') {
+        // Cálculo del Salario Quincenal Ordinario con deducciones de ley (ISSS y AFP)
+        const montoBrutoQuincena = salarioBaseNum / 2;
+        const baseISSS = Math.min(montoBrutoQuincena, 500);
+        const descuentoISSS = baseISSS * 0.03;
+        const descuentoAFP = montoBrutoQuincena * 0.0725;
+        const montoNetoQuincena = montoBrutoQuincena - descuentoISSS - descuentoAFP - adelantoNum;
+
+        resCalc = {
+          montoBruto: montoBrutoQuincena,
+          descuentoISSS: descuentoISSS,
+          descuentoAFP: descuentoAFP,
+          descuentoRenta: 0,
+          montoNeto: montoNetoQuincena
+        };
       }
 
       resultado = {
@@ -113,6 +128,12 @@ export const FormularioPagos = ({ empleados = [] }) => {
                 onChange={(e) => {
                   setEmpleadoSeleccionado(e.target.value);
                   setPagoCalculado(null);
+                  const empEncontrado = empleados.find((emp) => String(emp.id) === String(e.target.value));
+                  if (empEncontrado?.tipo_empleado === 'honorarios') {
+                    setTipoPago('honorarios');
+                  } else {
+                    setTipoPago('quincena');
+                  }
                 }}
                 className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all outline-none"
               >
@@ -134,23 +155,29 @@ export const FormularioPagos = ({ empleados = [] }) => {
                     setTipoPago(e.target.value);
                     setPagoCalculado(null);
                   }}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all outline-none"
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                 >
-                  <option value="quincena_25">Quincena 25</option>
-                  <option value="aguinaldo">Aguinaldo</option>
-                  <option value="vacaciones">Vacaciones</option>
-                  <option value="honorarios">Servicios / Honorarios</option>
+                  {empleado?.tipo_empleado === 'honorarios' ? (
+                    <option value="honorarios">Servicios / Honorarios</option>
+                  ) : (
+                    <>
+                      <option value="quincena">Salario Quincenal / Ordinario</option>
+                      <option value="quincena_25">Quincena 25</option>
+                      <option value="aguinaldo">Aguinaldo</option>
+                      <option value="vacaciones">Vacaciones</option>
+                    </>
+                  )}
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Adelantos a descontar ($)</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Adelantos / Préstamos ($)</label>
                 <input
                   type="number"
                   step="0.01"
                   value={adelanto}
                   onChange={(e) => setAdelanto(e.target.value)}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all outline-none"
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                   placeholder="0.00"
                 />
               </div>
@@ -200,14 +227,14 @@ export const FormularioPagos = ({ empleados = [] }) => {
                 
                 {pagoCalculado.descuento_isss > 0 && (
                   <div className="flex justify-between text-sm text-rose-600">
-                    <span>Retención ISSS:</span>
+                    <span>Retención ISSS (3%):</span>
                     <span>-${pagoCalculado.descuento_isss.toFixed(2)}</span>
                   </div>
                 )}
                 
                 {pagoCalculado.descuento_afp > 0 && (
                   <div className="flex justify-between text-sm text-rose-600">
-                    <span>Retención AFP:</span>
+                    <span>Retención AFP (7.25%):</span>
                     <span>-${pagoCalculado.descuento_afp.toFixed(2)}</span>
                   </div>
                 )}

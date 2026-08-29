@@ -31,6 +31,8 @@ export function calcularAguinaldo(salarioMensual, fechaIngreso, adelantos = 0, a
   return {
     diasCorresponden,
     montoBruto: Number(montoBruto.toFixed(2)),
+    descuentoISSS: 0, // Exento por ley
+    descuentoAFP: 0,  // Exento por ley
     descuentoRenta: Number(descuentoRenta.toFixed(2)),
     adelantos: Number(adelantos),
     montoNeto: Number(montoNeto.toFixed(2)),
@@ -50,29 +52,25 @@ export function calcularVacaciones(salarioMensual, porcentajeBono = 30, adelanto
     salario15Dias: Number(salarioQuincenal.toFixed(2)),
     montoBono: Number(montoBono.toFixed(2)),
     montoBruto: Number(montoBruto.toFixed(2)),
+    descuentoISSS: 0,
+    descuentoAFP: 0,
     adelantos: Number(adelantos),
     montoNeto: Number(montoNeto.toFixed(2))
   };
 }
 
-// 3. CÁLCULO DE QUINCENA 25 (Con Adelantos)
+// 3. CÁLCULO DE QUINCENA 25 (Con Adelantos - Sin retenciones de ISSS/AFP individuales)
 export function calcularQuincena25(salarioMensual, fechaIngreso, adelantos = 0) {
-  // Monto base de una quincena (15 días)
+  // Monto base de una quincena (15 días) sin retenciones de ley fraccionadas
   let montoBruto = salarioMensual / 2; 
 
-  // ISSS (3%) - Calculado sobre el techo máximo de $1000 al mes ($500 por quincena)
-  const baseISSS = Math.min(montoBruto, 500);
-  const descuentoISSS = baseISSS * 0.03;
-
-  // AFP (7.25%) - Calculado sobre el monto bruto total
-  const descuentoAFP = montoBruto * 0.0725;
-
-  const montoNeto = montoBruto - descuentoISSS - descuentoAFP - adelantos;
+  const montoNeto = montoBruto - adelantos;
 
   return {
     montoBruto: Number(montoBruto.toFixed(2)),
-    descuentoISSS: Number(descuentoISSS.toFixed(2)),
-    descuentoAFP: Number(descuentoAFP.toFixed(2)),
+    descuentoISSS: 0, // No aplica en pago quincenal aislado
+    descuentoAFP: 0,  // No aplica en pago quincenal aislado
+    descuentoRenta: 0,
     adelantos: Number(adelantos),
     montoNeto: Number(montoNeto.toFixed(2)),
   };

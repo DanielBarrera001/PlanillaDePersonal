@@ -10,31 +10,55 @@ export default function App() {
   const [sesion, setSesion] = useState(null);
   const [empleados, setEmpleados] = useState([]);
   const [cargando, setCargando] = useState(true);
-  const [vistaActual, setVistaActual] = useState('generar');
+  const [vistaActual, setVistaActual] = useState(() => {
+    return localStorage.getItem('vista_actual') || 'generar';
+  });
+
+  const cambiarVista = (vista) => {
+    setVistaActual(vista);
+    localStorage.setItem('vista_actual', vista);
+  };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    let isMounted = true;
+
+    // Carga inicial de sesión y empleados
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!isMounted) return;
       setSesion(session);
-      if (session) obtenerEmpleados();
-      else setCargando(false);
+      if (session) {
+        await obtenerEmpleados();
+      }
+      setCargando(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSesion(session);
-      if (session) obtenerEmpleados();
-      else setCargando(false);
+    // Escuchar cambios críticos de autenticación (ignora refrescos de token en segundo plano)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
+      
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        setSesion(session);
+        if (session && empleados.length === 0) {
+          await obtenerEmpleados();
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setSesion(null);
+        setEmpleados([]);
+        setCargando(false);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const obtenerEmpleados = async () => {
-    setCargando(true);
     const { data, error } = await supabase.from('empleados').select('*').order('nombre_completo');
     if (!error && data) {
       setEmpleados(data);
     }
-    setCargando(false);
   };
 
   const handleCerrarSesion = async () => {
@@ -62,7 +86,7 @@ export default function App() {
           
           <div className="flex flex-wrap justify-center gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
             <button
-              onClick={() => setVistaActual('generar')}
+              onClick={() => cambiarVista('generar')}
               className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
                 vistaActual === 'generar' 
                   ? 'bg-emerald-600 text-white shadow-md' 
@@ -74,7 +98,7 @@ export default function App() {
             </button>
             
             <button
-              onClick={() => setVistaActual('historial')}
+              onClick={() => cambiarVista('historial')}
               className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
                 vistaActual === 'historial' 
                   ? 'bg-emerald-600 text-white shadow-md' 
@@ -86,7 +110,7 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setVistaActual('personal')}
+              onClick={() => cambiarVista('personal')}
               className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
                 vistaActual === 'personal' 
                   ? 'bg-emerald-600 text-white shadow-md' 
@@ -108,18 +132,26 @@ export default function App() {
         </div>
       </header>
 
-      {/* Contenedor Principal Ensanchado */}
+      {/* Contenedor Principal con Vistas Persistentes */}
       <main className="max-w-7xl mx-auto px-6 py-8">
         {cargando ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-500 border-t-transparent"></div>
           </div>
         ) : (
-          vistaActual === 'generar' 
-            ? <FormularioPagos empleados={empleados} /> 
-            : vistaActual === 'historial'
-            ? <HistorialPagos />
-            : <GestionEmpleados onEmpleadoAgregado={obtenerEmpleados} />
+          <>
+            <div className={vistaActual === 'generar' ? 'block' : 'hidden'}>
+              <FormularioPagos empleados={empleados} />
+            </div>
+            
+            <div className={vistaActual === 'historial' ? 'block' : 'hidden'}>
+              <HistorialPagos />
+            </div>
+
+            <div className={vistaActual === 'personal' ? 'block' : 'hidden'}>
+              <GestionEmpleados onEmpleadoAgregado={obtenerEmpleados} />
+            </div>
+          </>
         )}
       </main>
     </div>
