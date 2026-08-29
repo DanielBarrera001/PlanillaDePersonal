@@ -3,8 +3,9 @@ import { supabase } from './lib/supabaseClient';
 import { FormularioPagos } from './components/FormularioPagos';
 import { HistorialPagos } from './components/HistorialPagos';
 import { GestionEmpleados } from './components/GestionEmpleados';
+import { GestionCreditos } from './components/GestionCreditos';
 import { Login } from './components/Login';
-import { LogOut, FilePlus, History, Users } from 'lucide-react';
+import { LogOut, FilePlus, History, Users, CreditCard } from 'lucide-react';
 
 export default function App() {
   const [sesion, setSesion] = useState(null);
@@ -87,7 +88,7 @@ export default function App() {
           <div className="flex flex-wrap justify-center gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
             <button
               onClick={() => cambiarVista('generar')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
                 vistaActual === 'generar' 
                   ? 'bg-emerald-600 text-white shadow-md' 
                   : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50'
@@ -99,7 +100,7 @@ export default function App() {
             
             <button
               onClick={() => cambiarVista('historial')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
                 vistaActual === 'historial' 
                   ? 'bg-emerald-600 text-white shadow-md' 
                   : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50'
@@ -111,7 +112,7 @@ export default function App() {
 
             <button
               onClick={() => cambiarVista('personal')}
-              className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
                 vistaActual === 'personal' 
                   ? 'bg-emerald-600 text-white shadow-md' 
                   : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50'
@@ -119,6 +120,18 @@ export default function App() {
             >
               <Users className="w-4 h-4" />
               Personal
+            </button>
+
+            <button
+              onClick={() => cambiarVista('creditos')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                vistaActual === 'creditos' 
+                  ? 'bg-emerald-600 text-white shadow-md' 
+                  : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50'
+              }`}
+            >
+              <CreditCard className="w-4 h-4" />
+              Créditos
             </button>
           </div>
 
@@ -150,6 +163,10 @@ export default function App() {
 
             <div className={vistaActual === 'personal' ? 'block' : 'hidden'}>
               <GestionEmpleados empleados={empleados} onEmpleadoAgregado={obtenerEmpleados} />
+            </div>
+
+            <div className={vistaActual === 'creditos' ? 'block' : 'hidden'}>
+              <GestionCreditos />
             </div>
           </>
         )}
