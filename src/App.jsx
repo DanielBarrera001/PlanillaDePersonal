@@ -149,7 +149,7 @@ export default function App() {
             </div>
 
             <div className={vistaActual === 'personal' ? 'block' : 'hidden'}>
-              <GestionEmpleados onEmpleadoAgregado={obtenerEmpleados} />
+              <GestionEmpleados empleados={empleados} onEmpleadoAgregado={obtenerEmpleados} />
             </div>
           </>
         )}

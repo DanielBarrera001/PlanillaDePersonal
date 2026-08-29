@@ -75,3 +75,25 @@ export function calcularQuincena25(salarioMensual, fechaIngreso, adelantos = 0) 
     montoNeto: Number(montoNeto.toFixed(2)),
   };
 }
+
+// Calculo de vacaciones en dias
+export function calcularVacacionesAcumuladas(fechaIngreso, diasTomadosHistoricos = 0) {
+  const ingreso = new Date(fechaIngreso);
+  const hoy = new Date();
+  
+  // Años cumplidos desde la fecha de ingreso
+  const diffTiempo = Math.abs(hoy - ingreso);
+  const anosServicio = diffTiempo / (1000 * 60 * 60 * 24 * 365);
+  
+  // Por ley en El Salvador se otorgan 15 días hábiles por cada año de trabajo
+  const diasTotalesGanados = Math.floor(anosServicio * 15);
+  
+  // Días disponibles = Días ganados por ley menos los días que ya se ha tomado
+  const diasDisponibles = Math.max(0, diasTotalesGanados - diasTomadosHistoricos);
+
+  return {
+    anosServicio: Math.floor(anosServicio),
+    diasTotalesGanados,
+    diasDisponibles
+  };
+}

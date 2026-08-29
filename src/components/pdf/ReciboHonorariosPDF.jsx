@@ -57,7 +57,6 @@ export const ReciboHonorariosPDF = ({ empleado, monto, montoLetras }) => {
         </Text>
 
         <View style={styles.signatureArea}>
-          <View style={styles.line} />
           <Text style={styles.name}>F: ___________________________________</Text>
           <Text style={[styles.name, { marginTop: 10 }]}>{empleado.nombre_completo}</Text>
           <Text style={styles.dui}>DUI: {empleado.dui}</Text>
