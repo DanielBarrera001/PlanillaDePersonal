@@ -26,7 +26,7 @@ export const ReciboSalarioPDF = ({ empleado, pago }) => {
     <Document>
       <Page size="LETTER" style={styles.page}>
         <View style={styles.header}>
-          <Text style={styles.title}>UDP, Centro de Copias La Rana</Text>
+          <Text style={styles.title}>UDP, Centro de Copias La Ranita</Text>
           <Text style={styles.subtitle}>Comprobante de Pago de Salario Ordinario</Text>
         </View>
 

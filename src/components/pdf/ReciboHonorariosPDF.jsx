@@ -48,7 +48,7 @@ export const ReciboHonorariosPDF = ({ empleado, monto, montoLetras }) => {
     <Document>
       <Page size="LETTER" style={styles.page}>
         <View style={styles.header}>
-          <Text style={styles.entity}>UDP, Centro de Copias La Rana</Text>
+          <Text style={styles.entity}>UDP, Centro de Copias La Ranita</Text>
           <Text style={styles.presente}>Presente</Text>
         </View>
 

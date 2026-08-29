@@ -77,23 +77,31 @@ export function calcularQuincena25(salarioMensual, fechaIngreso, adelantos = 0) 
 }
 
 // Calculo de vacaciones en dias
-export function calcularVacacionesAcumuladas(fechaIngreso, diasTomadosHistoricos = 0) {
-  const ingreso = new Date(fechaIngreso);
+export function calcularDiasAnualidad(fechaIngreso, diasTomadosEstePeriodo = 0) {
+  if (!fechaIngreso) return { diasTotales: 15, diasDisponibles: 15, periodoTexto: '' };
+
   const hoy = new Date();
+  const ingreso = new Date(fechaIngreso);
   
-  // Años cumplidos desde la fecha de ingreso
-  const diffTiempo = Math.abs(hoy - ingreso);
-  const anosServicio = diffTiempo / (1000 * 60 * 60 * 24 * 365);
+  const anioActual = hoy.getFullYear();
+  const aniversarioEsteAno = new Date(ingreso);
+  aniversarioEsteAno.setFullYear(anioActual);
+
+  let inicioPeriodo = new Date(aniversarioEsteAno);
+  if (hoy < aniversarioEsteAno) {
+    inicioPeriodo.setFullYear(anioActual - 1);
+  }
   
-  // Por ley en El Salvador se otorgan 15 días hábiles por cada año de trabajo
-  const diasTotalesGanados = Math.floor(anosServicio * 15);
-  
-  // Días disponibles = Días ganados por ley menos los días que ya se ha tomado
-  const diasDisponibles = Math.max(0, diasTotalesGanados - diasTomadosHistoricos);
+  const finPeriodo = new Date(inicioPeriodo);
+  finPeriodo.setFullYear(inicioPeriodo.getFullYear() + 1);
+
+  const diasTotales = 15;
+  const diasDisponibles = Math.max(0, diasTotales - diasTomadosEstePeriodo);
 
   return {
-    anosServicio: Math.floor(anosServicio),
-    diasTotalesGanados,
-    diasDisponibles
+    diasTotales,
+    diasDisponibles,
+    diasTomados: diasTomadosEstePeriodo,
+    periodoTexto: `${inicioPeriodo.toLocaleDateString()} - ${finPeriodo.toLocaleDateString()}`
   };
 }

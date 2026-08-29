@@ -31,7 +31,7 @@ export const Login = ({ onLoginSuccess }) => {
     <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
       <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-slate-800">Centro de Copias La Rana</h1>
+          <h1 className="text-2xl font-bold text-slate-800">Centro de Copias La Ranita</h1>
           <p className="text-sm text-slate-500 mt-1">Acceso al Sistema de Planillas</p>
         </div>
 
