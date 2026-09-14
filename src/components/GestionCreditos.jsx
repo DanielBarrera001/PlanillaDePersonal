@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Wallet, UserPlus, DollarSign, PlusCircle, Trash2, ChevronDown, ChevronUp, Users, FileText, History } from 'lucide-react';
+import { Wallet, UserPlus, DollarSign, PlusCircle, Trash2, ChevronDown, ChevronUp, Users, FileText, History, CheckCircle2, ArrowRight, UserCheck } from 'lucide-react';
 
 export const GestionCreditos = () => {
   const [pestanaActiva, setPestanaActiva] = useState('clientes');
@@ -17,10 +17,19 @@ export const GestionCreditos = () => {
   const [clientesExpandidos, setClientesExpandidos] = useState({});
 
   const [empleados, setEmpleados] = useState([]);
-  const [adelantosList, setAdelantosList] = useState([]);
-  const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState('');
-  const [montoAdelantoEmp, setMontoAdelantoEmp] = useState('');
+  const [historialAdelantos, setHistorialAdelantos] = useState([]);
+  const [historialCreditos, setHistorialCreditos] = useState([]);
+  const [saldosCreditos, setSaldosCreditos] = useState([]);
+  
+  // Formulario Pestaña 2: Adelantos de Planilla (Descuento único)
+  const [empleadoAdelanto, setEmpleadoAdelanto] = useState('');
+  const [montoAdelanto, setMontoAdelanto] = useState('');
   const [motivoAdelanto, setMotivoAdelanto] = useState('');
+
+  // Formulario Pestaña 3: Créditos de Planilla (Abonos fraccionados)
+  const [empleadoCredito, setEmpleadoCredito] = useState('');
+  const [montoCredito, setMontoCredito] = useState('');
+  const [motivoCredito, setMotivoCredito] = useState('');
 
   const [cargando, setCargando] = useState(true);
 
@@ -30,6 +39,8 @@ export const GestionCreditos = () => {
 
   const cargarDatos = async () => {
     setCargando(true);
+    
+    // 1. Cargar datos de clientes
     const { data: resClientes } = await supabase.from('clientes_credito').select('*').order('nombre');
     if (resClientes) setClientes(resClientes);
 
@@ -39,16 +50,49 @@ export const GestionCreditos = () => {
       .order('fecha', { ascending: false });
     if (resCuentas) setCuentas(resCuentas);
 
+    // 2. Cargar datos de empleados
     const { data: resEmpleados } = await supabase.from('empleados').select('*').order('nombre_completo');
     if (resEmpleados) setEmpleados(resEmpleados);
 
+    // 3. Cargar Historial de Adelantos (adelanto_salario > 0 y credito_otorgado == 0)
     const { data: resAdelantos } = await supabase
       .from('pagos_registro')
-      .select('*, empleados(nombre_completo)')
-      .eq('monto_bruto', 0)
+      .select('*')
       .gt('adelanto_salario', 0)
+      .eq('credito_otorgado', 0)
+      .eq('monto_bruto', 0)
       .order('fecha_pago', { ascending: false });
-    if (resAdelantos) setAdelantosList(resAdelantos);
+    if (resAdelantos) setHistorialAdelantos(resAdelantos);
+
+    // 4. Cargar Historial de Créditos de Planilla (credito_otorgado > 0)
+    const { data: resCreds } = await supabase
+      .from('pagos_registro')
+      .select('*')
+      .gt('credito_otorgado', 0)
+      .eq('monto_bruto', 0)
+      .order('fecha_pago', { ascending: false });
+    if (resCreds) setHistorialCreditos(resCreds);
+
+    // 5. Calcular Saldos de Créditos de Planilla (Otorgados vs Descontados)
+    const { data: creditosData } = await supabase
+      .from('pagos_registro')
+      .select('empleado_id, credito_otorgado, descuento_credito');
+
+    if (resEmpleados && creditosData) {
+      const consolidado = resEmpleados.map(emp => {
+        const transacciones = creditosData.filter(p => p.empleado_id === emp.id);
+        const totalOtorgado = transacciones.reduce((acc, curr) => acc + Number(curr.credito_otorgado || 0), 0);
+        const totalAbonado = transacciones.reduce((acc, curr) => acc + Number(curr.descuento_credito || 0), 0);
+
+        return {
+          ...emp,
+          totalOtorgado,
+          totalAbonado,
+          saldoActual: Math.max(0, totalOtorgado - totalAbonado)
+        };
+      });
+      setSaldosCreditos(consolidado.filter(e => e.saldoActual > 0 || e.totalOtorgado > 0));
+    }
 
     setCargando(false);
   };
@@ -101,33 +145,78 @@ export const GestionCreditos = () => {
     }
   };
 
-  const handleRegistrarAdelantoEmpleado = async (e) => {
+  // Registrar Adelanto (Descuento único de golpe)
+  const handleRegistrarAdelanto = async (e) => {
     e.preventDefault();
-    if (!empleadoSeleccionado || !montoAdelantoEmp) return;
+    if (!empleadoAdelanto || !montoAdelanto) {
+      alert("Selecciona un empleado y digita un monto válido.");
+      return;
+    }
+
+    const emp = empleados.find(e => String(e.id) === String(empleadoAdelanto));
+    if (!emp) return;
 
     const { error } = await supabase.from('pagos_registro').insert([{
-      empleado_id: empleadoSeleccionado,
-      tipo_pago: 'quincena', 
+      empleado_id: emp.id,
+      empleado_nombre: emp.nombre_completo,
+      tipo_pago: 'adelanto',
       fecha_pago: new Date().toISOString().split('T')[0],
       monto_bruto: 0,
-      adelanto_salario: parseFloat(montoAdelantoEmp),
-      monto_neto: -parseFloat(montoAdelantoEmp),
-      observaciones: motivoAdelanto || 'Adelanto de salario / Préstamo'
+      adelanto_salario: parseFloat(montoAdelanto),
+      credito_otorgado: 0,
+      descuento_credito: 0,
+      monto_neto: 0,
+      observaciones: motivoAdelanto || 'Adelanto de salario'
     }]);
 
     if (error) {
       alert('Error al registrar adelanto: ' + error.message);
     } else {
-      alert('Adelanto registrado exitosamente. Se descontará en el próximo cálculo de planilla.');
-      setMontoAdelantoEmp('');
+      alert('Adelanto registrado exitosamente.');
+      setMontoAdelanto('');
       setMotivoAdelanto('');
-      setEmpleadoSeleccionado('');
+      setEmpleadoAdelanto('');
       cargarDatos();
     }
   };
 
-  const handleEliminarAdelanto = async (id) => {
-    if (!confirm('¿Deseas eliminar este registro de adelanto?')) return;
+  // Registrar Crédito de Planilla (Abonos fraccionados)
+  const handleRegistrarCreditoPlanilla = async (e) => {
+    e.preventDefault();
+    if (!empleadoCredito || !montoCredito) {
+      alert("Selecciona un empleado y digita un monto válido.");
+      return;
+    }
+
+    const emp = empleados.find(e => String(e.id) === String(empleadoCredito));
+    if (!emp) return;
+
+    const { error } = await supabase.from('pagos_registro').insert([{
+      empleado_id: emp.id,
+      empleado_nombre: emp.nombre_completo,
+      tipo_pago: 'credito',
+      fecha_pago: new Date().toISOString().split('T')[0],
+      monto_bruto: 0,
+      adelanto_salario: 0,
+      credito_otorgado: parseFloat(montoCredito),
+      descuento_credito: 0,
+      monto_neto: 0,
+      observaciones: motivoCredito || 'Crédito de personal para inversión'
+    }]);
+
+    if (error) {
+      alert('Error al registrar crédito: ' + error.message);
+    } else {
+      alert('Crédito de planilla registrado exitosamente (admite abonos flexibles).');
+      setMontoCredito('');
+      setMotivoCredito('');
+      setEmpleadoCredito('');
+      cargarDatos();
+    }
+  };
+
+  const handleEliminarOperacion = async (id) => {
+    if (!confirm('¿Deseas eliminar este registro?')) return;
     const { error } = await supabase.from('pagos_registro').delete().eq('id', id);
     if (!error) {
       cargarDatos();
@@ -147,25 +236,35 @@ export const GestionCreditos = () => {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
-      <div className="flex bg-slate-200 p-1 rounded-xl max-w-md mx-auto">
+      {/* Selector de Pestañas */}
+      <div className="flex flex-wrap md:flex-nowrap bg-slate-200 p-1 rounded-xl max-w-2xl mx-auto gap-1">
         <button
           onClick={() => setPestanaActiva('clientes')}
-          className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+          className={`flex-1 py-2.5 px-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
             pestanaActiva === 'clientes' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-800'
           }`}
         >
-          <Wallet className="w-4 h-4" /> Cuentas de Clientes (Fiados)
+          <Wallet className="w-4 h-4 hidden sm:block" /> Crédito Clientes
         </button>
         <button
-          onClick={() => setPestanaActiva('empleados')}
-          className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-            pestanaActiva === 'empleados' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-800'
+          onClick={() => setPestanaActiva('adelantos')}
+          className={`flex-1 py-2.5 px-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+            pestanaActiva === 'adelantos' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-800'
           }`}
         >
-          <Users className="w-4 h-4" /> Adelantos de Planilla
+          <History className="w-4 h-4 hidden sm:block" /> Adelantos Planilla
+        </button>
+        <button
+          onClick={() => setPestanaActiva('creditos')}
+          className={`flex-1 py-2.5 px-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+            pestanaActiva === 'creditos' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:text-slate-800'
+          }`}
+        >
+          <UserCheck className="w-4 h-4 hidden sm:block" /> Créditos Planilla
         </button>
       </div>
 
+      {/* PESTAÑA 1: CRÉDITO CLIENTES */}
       {pestanaActiva === 'clientes' && (
         <div className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -284,21 +383,22 @@ export const GestionCreditos = () => {
         </div>
       )}
 
-      {pestanaActiva === 'empleados' && (
+      {/* PESTAÑA 2: ADELANTOS PLANILLA (Descuento único de golpe) */}
+      {pestanaActiva === 'adelantos' && (
         <div className="space-y-6">
           <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100 space-y-6">
             <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-emerald-600" /> Registro de Adelantos y Préstamos a Empleados
+              <FileText className="w-5 h-5 text-emerald-600" /> Otorgar Adelanto de Salario
             </h3>
             <p className="text-sm text-slate-500">
-              Cualquier adelanto registrado aquí quedará vinculado automáticamente para restarse al momento de procesar el pago de planilla del colaborador.
+              Registra un adelanto rápido. Este se descontará íntegro y de golpe en la próxima fecha de pago.
             </p>
 
-            <form onSubmit={handleRegistrarAdelantoEmpleado} className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border">
+            <form onSubmit={handleRegistrarAdelanto} className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Colaborador</label>
                 <select
-                  value={empleadoSeleccionado} onChange={(e) => setEmpleadoSeleccionado(e.target.value)} required
+                  value={empleadoAdelanto} onChange={(e) => setEmpleadoAdelanto(e.target.value)} required
                   className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none"
                 >
                   <option value="">Seleccionar Empleado...</option>
@@ -308,8 +408,8 @@ export const GestionCreditos = () => {
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Monto del Adelanto ($)</label>
                 <input
-                  type="number" step="0.01" placeholder="0.00" value={montoAdelantoEmp}
-                  onChange={(e) => setMontoAdelantoEmp(e.target.value)} required
+                  type="number" step="0.01" placeholder="0.00" value={montoAdelanto}
+                  onChange={(e) => setMontoAdelanto(e.target.value)} required
                   className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none"
                 />
               </div>
@@ -317,7 +417,7 @@ export const GestionCreditos = () => {
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Motivo / Observación</label>
                 <div className="flex gap-2">
                   <input
-                    type="text" placeholder="Ej. Emergencia familiar" value={motivoAdelanto}
+                    type="text" placeholder="Ej. Emergencia rápida" value={motivoAdelanto}
                     onChange={(e) => setMotivoAdelanto(e.target.value)}
                     className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none"
                   />
@@ -331,9 +431,9 @@ export const GestionCreditos = () => {
 
           <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100">
             <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-              <History className="w-5 h-5 text-emerald-600" /> Historial de Adelantos Activos
+              <History className="w-5 h-5 text-emerald-600" /> Historial de Adelantos Otorgados
             </h3>
-            {adelantosList.length > 0 ? (
+            {historialAdelantos.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left border-collapse">
                   <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
@@ -346,14 +446,14 @@ export const GestionCreditos = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {adelantosList.map((item) => (
+                    {historialAdelantos.map((item) => (
                       <tr key={item.id} className="hover:bg-slate-50">
                         <td className="px-4 py-3 text-slate-600">{item.fecha_pago}</td>
-                        <td className="px-4 py-3 font-bold text-slate-800">{item.empleados?.nombre_completo || 'Desconocido'}</td>
+                        <td className="px-4 py-3 font-bold text-slate-800">{item.empleado_nombre || 'Desconocido'}</td>
                         <td className="px-4 py-3 text-slate-600">{item.observaciones || '-'}</td>
                         <td className="px-4 py-3 text-right font-extrabold text-rose-600">${Number(item.adelanto_salario).toFixed(2)}</td>
                         <td className="px-4 py-3 text-center">
-                          <button onClick={() => handleEliminarAdelanto(item.id)} className="text-rose-400 hover:text-rose-600">
+                          <button onClick={() => handleEliminarOperacion(item.id)} className="text-rose-400 hover:text-rose-600">
                             <Trash2 className="w-4 h-4 mx-auto" />
                           </button>
                         </td>
@@ -363,7 +463,98 @@ export const GestionCreditos = () => {
                 </table>
               </div>
             ) : (
-              <p className="text-center text-slate-400 py-6">No hay adelantos o préstamos registrados para empleados.</p>
+              <p className="text-center text-slate-400 py-6">No hay adelantos registrados.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* PESTAÑA 3: CRÉDITOS PLANILLA (Abonos fraccionados / flexibles) */}
+      {pestanaActiva === 'creditos' && (
+        <div className="space-y-6">
+          <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100 space-y-6">
+            <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-emerald-600" /> Otorgar Crédito
+            </h3>
+            <p className="text-sm text-slate-500">
+              Registra un préstamo grande. Permite abonar cantidades flexibles y variables en cada fecha de pago.
+            </p>
+
+            <form onSubmit={handleRegistrarCreditoPlanilla} className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Colaborador</label>
+                <select
+                  value={empleadoCredito} onChange={(e) => setEmpleadoCredito(e.target.value)} required
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none"
+                >
+                  <option value="">Seleccionar Empleado...</option>
+                  {empleados.map((emp) => (<option key={emp.id} value={emp.id}>{emp.nombre_completo}</option>))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Monto del Crédito ($)</label>
+                <input
+                  type="number" step="0.01" placeholder="0.00" value={montoCredito}
+                  onChange={(e) => setMontoCredito(e.target.value)} required
+                  className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Motivo / Observación</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text" placeholder="Ej. Préstamo para inversión" value={motivoCredito}
+                    onChange={(e) => setMotivoCredito(e.target.value)}
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none"
+                  />
+                  <button type="submit" className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs hover:bg-emerald-700 whitespace-nowrap">
+                    Guardar
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100">
+            <div className="mb-6">
+              <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Users className="w-5 h-5 text-emerald-600" /> Saldos Activos de Créditos de Planilla
+              </h3>
+              <p className="text-sm text-slate-500 mt-1">Cálculo en tiempo real: Total otorgado en créditos MENOS los abonos aplicados en recibos.</p>
+            </div>
+
+            {cargando ? (
+              <div className="text-center text-emerald-600 py-8">Calculando saldos financieros...</div>
+            ) : saldosCreditos.length > 0 ? (
+              <div className="space-y-3">
+                {saldosCreditos.map(emp => (
+                  <div key={emp.id} className="bg-slate-50 p-5 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-lg">{emp.nombre_completo}</h4>
+                      <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-slate-500">
+                        <span>Total Créditos: <strong className="text-slate-700">${emp.totalOtorgado.toFixed(2)}</strong></span>
+                        <ArrowRight className="w-4 h-4 text-slate-300 hidden sm:block" />
+                        <span>Abonado en Planillas: <strong className="text-emerald-600">${emp.totalAbonado.toFixed(2)}</strong></span>
+                      </div>
+                    </div>
+                    <div className="text-left sm:text-right bg-white p-3 rounded-lg border border-slate-100 shadow-sm min-w-[150px]">
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Deuda Vigente</p>
+                      {emp.saldoActual > 0 ? (
+                        <p className="text-2xl font-extrabold text-rose-600">${emp.saldoActual.toFixed(2)}</p>
+                      ) : (
+                        <div className="flex items-center sm:justify-end gap-1 text-emerald-600">
+                          <CheckCircle2 className="w-5 h-5" />
+                          <span className="font-bold text-lg">Saldado</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 bg-slate-50 rounded-2xl border border-slate-100 text-slate-400">
+                Ningún colaborador tiene saldo pendiente por créditos de planilla.
+              </div>
             )}
           </div>
         </div>

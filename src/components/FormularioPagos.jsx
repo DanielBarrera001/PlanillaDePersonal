@@ -13,7 +13,14 @@ export const FormularioPagos = ({ empleados = [] }) => {
 
   const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState('');
   const [tipoPago, setTipoPago] = useState('quincena');
-  const [adelantoAutomatico, setAdelantoAutomatico] = useState(0);
+  
+  // 1. ADELANTO (Descuento Único y Obligatorio)
+  const [adelantoPendiente, setAdelantoPendiente] = useState(0);
+
+  // 2. CRÉDITO DE INVERSIÓN (Abono Flexible/Variable digitado por ti)
+  const [saldoCreditoInversion, setSaldoCreditoInversion] = useState(0);
+  const [abonoCreditoFlex, setAbonoCreditoFlex] = useState(''); 
+
   const [montoHonorario, setMontoHonorario] = useState(0);
   const [pagoCalculado, setPagoCalculado] = useState(null);
   const [guardando, setGuardando] = useState(false);
@@ -24,17 +31,17 @@ export const FormularioPagos = ({ empleados = [] }) => {
 
   useEffect(() => {
     if (empleadoSeleccionado) {
-      cargarAdelantoEmpleado(empleadoSeleccionado);
+      cargarDeudasEmpleado(empleadoSeleccionado);
     } else {
-      setAdelantoAutomatico(0);
+      setAdelantoPendiente(0);
+      setSaldoCreditoInversion(0);
+      setAbonoCreditoFlex('');
     }
   }, [empleadoSeleccionado]);
 
   const cargarMetricasResumen = async () => {
     const empConVac = await Promise.all(
       empleados.map(async (emp) => {
-        if (emp.tipo_empleado === 'honorarios') return { ...emp, diasTomados: 0, diasDisponibles: 15 };
-        
         const { data: vacReg } = await supabase
           .from('vacaciones_registros')
           .select('dias_tomados')
@@ -70,20 +77,38 @@ export const FormularioPagos = ({ empleados = [] }) => {
     }
   };
 
-  const cargarAdelantoEmpleado = async (empId) => {
-    const { data, error } = await supabase
+  const cargarDeudasEmpleado = async (empId) => {
+    // 1. Cargar Adelantos (Busca registros donde se dio dinero y no se han saldado)
+    const { data: adelantosData } = await supabase
       .from('pagos_registro')
       .select('adelanto_salario, observaciones')
       .eq('empleado_id', empId)
       .eq('monto_bruto', 0)
       .gt('adelanto_salario', 0);
 
-    if (!error && data) {
-      const pendientes = data.filter(item => !item.observaciones || !item.observaciones.includes('Saldado'));
+    if (adelantosData) {
+      const pendientes = adelantosData.filter(item => !item.observaciones || !item.observaciones.includes('Saldado'));
       const totalAdelantos = pendientes.reduce((acc, curr) => acc + Number(curr.adelanto_salario || 0), 0);
-      setAdelantoAutomatico(totalAdelantos);
+      setAdelantoPendiente(totalAdelantos);
     } else {
-      setAdelantoAutomatico(0);
+      setAdelantoPendiente(0);
+    }
+
+    // 2. Cargar Crédito de Inversión (Calcula saldo: Total Otorgado MENOS Total de Abonos registrados)
+    const { data: creditosData } = await supabase
+      .from('pagos_registro')
+      .select('credito_otorgado, descuento_credito')
+      .eq('empleado_id', empId);
+
+    if (creditosData) {
+      const otorgados = creditosData.reduce((acc, curr) => acc + Number(curr.credito_otorgado || 0), 0);
+      const abonados = creditosData.reduce((acc, curr) => acc + Number(curr.descuento_credito || 0), 0);
+      const saldoActual = Math.max(0, otorgados - abonados);
+      setSaldoCreditoInversion(saldoActual);
+      setAbonoCreditoFlex(''); // Inicia vacío para que digites lo que el empleado te abonará HOY (puede ser $0, $30, $150, etc.)
+    } else {
+      setSaldoCreditoInversion(0);
+      setAbonoCreditoFlex('');
     }
   };
 
@@ -96,11 +121,18 @@ export const FormularioPagos = ({ empleados = [] }) => {
     }
 
     let resultado = {};
-    const adelantoNum = parseFloat(adelantoAutomatico) || 0;
+    const adelantoNum = parseFloat(adelantoPendiente) || 0; // Se descuenta sí o sí completo
+    const abonoFlexNum = parseFloat(abonoCreditoFlex) || 0;  // Lo que decidas abonar hoy al crédito de inversión (puede ser 0)
     const salarioBaseNum = parseFloat(empleado.salario_base) || 0;
     const esHonorarios = empleado.tipo_empleado === 'honorarios';
 
-    
+    // Validación: No abonar más al crédito de lo que realmente debe
+    if (abonoFlexNum > saldoCreditoInversion) {
+      setPagoCalculado(null);
+      alert(`ERROR: El abono al crédito ($${abonoFlexNum.toFixed(2)}) supera el saldo pendiente ($${saldoCreditoInversion.toFixed(2)}).`);
+      return;
+    }
+
     if (tipoPago === 'honorarios') {
       const montoNum = parseFloat(montoHonorario) || salarioBaseNum;
       if (montoNum <= 0) {
@@ -108,9 +140,10 @@ export const FormularioPagos = ({ empleados = [] }) => {
         return;
       }
 
-      if (adelantoNum > montoNum) {
+      const totalDescuentos = adelantoNum + abonoFlexNum;
+      if (totalDescuentos > montoNum) {
         setPagoCalculado(null);
-        alert(`ERROR: El adelanto pendiente ($${adelantoNum.toFixed(2)}) no puede ser mayor al monto a facturar ($${montoNum.toFixed(2)}).`);
+        alert(`ERROR: Los descuentos totales ($${totalDescuentos.toFixed(2)}) superan el monto a facturar ($${montoNum.toFixed(2)}).`);
         return;
       }
 
@@ -120,9 +153,10 @@ export const FormularioPagos = ({ empleados = [] }) => {
         descuento_isss: 0,
         descuento_afp: 0,
         descuento_renta: 0,
-        adelanto_salario: adelantoNum,
-        monto_neto: montoNum - adelantoNum,
-        monto_letras: numeroALetras(montoNum - adelantoNum),
+        adelanto_salario: adelantoNum,    // Adelanto descontado de golpe
+        descuento_credito: abonoFlexNum, // Abono flexible al crédito de inversión
+        monto_neto: montoNum - totalDescuentos,
+        monto_letras: numeroALetras(montoNum - totalDescuentos),
       };
     } else {
       let resCalc = {};
@@ -159,13 +193,14 @@ export const FormularioPagos = ({ empleados = [] }) => {
         ? Number(resCalc.montoNeto) 
         : ((bruto + bono) - finalISSS - finalAFP - finalRenta);
 
-      if (adelantoNum > disponible) {
+      const totalDescuentos = adelantoNum + abonoFlexNum;
+      if (totalDescuentos > disponible) {
         setPagoCalculado(null);
-        alert(`ERROR: El adelanto pendiente ($${adelantoNum.toFixed(2)}) es mayor al dinero disponible de este recibo ($${disponible.toFixed(2)}). No se puede procesar.`);
+        alert(`ERROR: Los descuentos totales ($${totalDescuentos.toFixed(2)}) superan el dinero disponible del recibo ($${disponible.toFixed(2)}).`);
         return;
       }
 
-      const netoCalculado = disponible - adelantoNum;
+      const netoCalculado = disponible - totalDescuentos;
 
       resultado = {
         tipo_pago: tipoPago,
@@ -175,7 +210,8 @@ export const FormularioPagos = ({ empleados = [] }) => {
         descuento_isss: finalISSS,
         descuento_afp: finalAFP,
         descuento_renta: finalRenta,
-        adelanto_salario: adelantoNum,
+        adelanto_salario: adelantoNum,    // Adelanto obligatorio de golpe
+        descuento_credito: abonoFlexNum, // Abono flexible al crédito de inversión (puede ser 0)
         monto_neto: netoCalculado,
         dias_calculados: resCalc.diasCorresponden || 15,
         monto_letras: numeroALetras(netoCalculado),
@@ -189,6 +225,7 @@ export const FormularioPagos = ({ empleados = [] }) => {
     if (!pagoCalculado || !empleado) return;
     setGuardando(true);
     
+    // Guardamos el registro con los montos separados en sus respectivas columnas
     const { error } = await supabase.from('pagos_registro').insert([{
       empleado_id: empleado.id,
       empleado_nombre: empleado.nombre_completo,
@@ -198,10 +235,12 @@ export const FormularioPagos = ({ empleados = [] }) => {
       descuento_isss: pagoCalculado.descuento_isss || 0,
       descuento_afp: pagoCalculado.descuento_afp || 0,
       descuento_renta: pagoCalculado.descuento_renta || 0,
-      adelanto_salario: pagoCalculado.adelanto_salario || 0,
+      adelanto_salario: pagoCalculado.adelanto_salario || 0,       // Se registra el adelanto descontado
+      credito_otorgado: 0,
+      descuento_credito: pagoCalculado.descuento_credito || 0,     // Se registra el abono flexible al crédito de inversión
       monto_neto: pagoCalculado.monto_neto,
       fecha_pago: pagoCalculado.fecha_pago || new Date().toISOString().split('T')[0],
-      observaciones: `Pago de ${tipoPago} con descuento de adelanto aplicado.`
+      observaciones: `Pago de ${tipoPago}`
     }]);
 
     if (error) {
@@ -210,28 +249,24 @@ export const FormularioPagos = ({ empleados = [] }) => {
       return;
     }
 
+    // Si se cobró el adelanto, lo marcamos como saldado para que desaparezca de futuras deudas de adelanto
     if (pagoCalculado.adelanto_salario > 0) {
-      const { error: errorActualizar } = await supabase
+      await supabase
         .from('pagos_registro')
         .update({ observaciones: 'Saldado en planilla' })
         .eq('empleado_id', empleado.id)
         .eq('monto_bruto', 0)
         .gt('adelanto_salario', 0);
-
-      if (errorActualizar) {
-        console.error('Error al actualizar los adelantos:', errorActualizar.message);
-      }
     }
 
     setGuardando(false);
-    alert('¡Pago registrado con éxito y adelantos saldados!');
+    alert('¡Pago registrado con éxito!');
     
     setPagoCalculado(null);
-    setAdelantoAutomatico(0);
+    setAbonoCreditoFlex('');
     cargarMetricasResumen();
+    cargarDeudasEmpleado(empleado.id);
   };
-
-  const empleadosPlanilla = empleadosConVacaciones.filter(e => e.tipo_empleado === 'planilla');
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
@@ -239,7 +274,7 @@ export const FormularioPagos = ({ empleados = [] }) => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
           <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Créditos Pendientes</p>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Créditos Clientes</p>
             <h3 className="text-2xl font-extrabold text-slate-800 mt-1">${totalCreditosPendientes.toFixed(2)}</h3>
             <p className="text-xs text-amber-600 font-medium mt-1">{clientesConDeuda} clientes con saldo</p>
           </div>
@@ -271,31 +306,35 @@ export const FormularioPagos = ({ empleados = [] }) => {
         </div>
       </div>
 
+      {/* Estatus de Vacaciones del Personal (Ley 15 Días) */}
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
         <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
           <Award className="w-5 h-5 text-emerald-600" />
           Estatus de Vacaciones del Personal (Ley 15 Días)
         </h3>
-        {empleadosPlanilla.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {empleadosPlanilla.map((emp) => {
-              const porcentaje = Math.min(100, (emp.diasTomados / 15) * 100);
-              return (
-                <div key={emp.id} className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
-                  <div className="flex justify-between items-center text-xs font-bold text-slate-700 mb-1">
-                    <span>{emp.nombre_completo}</span>
-                    <span className="text-emerald-700">{emp.diasDisponibles} días libres</span>
-                  </div>
-                  <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                    <div className="bg-emerald-500 h-full transition-all duration-500" style={{ width: `${porcentaje}%` }}></div>
-                  </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {empleadosConVacaciones.map((emp) => {
+            const porcentaje = Math.min(100, Math.max(0, (emp.diasTomados / 15) * 100));
+            return (
+              <div key={emp.id} className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                <div className="flex justify-between items-center text-xs font-bold text-slate-700 mb-1">
+                  <span>{emp.nombre_completo}</span>
+                  <span className="text-emerald-700">{emp.diasDisponibles} días libres</span>
                 </div>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-xs text-slate-400 text-center py-4">No hay personal de planilla registrado.</p>
-        )}
+                <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-emerald-500 h-full transition-all duration-500" 
+                    style={{ width: `${porcentaje}%` }}
+                  ></div>
+                </div>
+                <div className="flex justify-between items-center text-[10px] text-slate-400 mt-1">
+                  <span>Usados: {emp.diasTomados} días</span>
+                  <span>{emp.tipo_empleado === 'honorarios' ? 'Honorarios' : 'Planilla'}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100">
@@ -304,7 +343,7 @@ export const FormularioPagos = ({ empleados = [] }) => {
             <Calculator className="w-6 h-6 text-emerald-600" />
             Procesamiento de Planilla
           </h2>
-          <p className="text-slate-500 text-sm">Completa los datos para generar y registrar un nuevo recibo.</p>
+          <p className="text-slate-500 text-sm">Gestiona pagos, adelantos obligatorios y abonos flexibles a créditos de inversión.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -343,32 +382,53 @@ export const FormularioPagos = ({ empleados = [] }) => {
                   <option value="quincena_25">Quincena 25</option>
                   <option value="aguinaldo">Aguinaldo</option>
                   <option value="vacaciones">Vacaciones</option>
-                  <option value="indemnizacion">Indemización</option>
+                  <option value="indemnizacion">Indemnización</option>
                 </select>
               </div>
 
+              {/* 1. ADELANTO: Se descuenta sí o sí completo */}
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Adelantos Pendientes</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Adelanto Activo</label>
                 <div className="w-full p-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-700 font-bold flex items-center justify-between">
-                  <span>${adelantoAutomatico.toFixed(2)}</span>
-                  <span className="text-xs font-normal text-slate-400">(Vinculado de créditos)</span>
+                  <span>${adelantoPendiente.toFixed(2)}</span>
                 </div>
               </div>
             </div>
 
-            {tipoPago === 'honorarios' && (
+            {/* 2. CRÉDITO DE INVERSIÓN: Abono flexible digitado por ti */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Monto Total Pactado ($)</label>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Abono a Crédito ($)</label>
                 <input
                   type="number"
                   step="0.01"
-                  value={montoHonorario}
-                  onChange={(e) => setMontoHonorario(e.target.value)}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
-                  placeholder="Ej. 150.00"
+                  value={abonoCreditoFlex}
+                  onChange={(e) => setAbonoCreditoFlex(e.target.value)}
+                  disabled={saldoCreditoInversion <= 0}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none disabled:opacity-50 disabled:bg-slate-100"
+                  placeholder={saldoCreditoInversion > 0 ? "Ej. 30, 150, 0..." : "0.00"}
                 />
+                {saldoCreditoInversion > 0 && (
+                  <p className="text-xs text-slate-500 mt-1">
+                    Deuda total de crédito: <strong className="text-rose-600">${saldoCreditoInversion.toFixed(2)}</strong> (Digita 0 si hoy no abonará nada).
+                  </p>
+                )}
               </div>
-            )}
+
+              {tipoPago === 'honorarios' && (
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Monto Total Pactado ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={montoHonorario}
+                    onChange={(e) => setMontoHonorario(e.target.value)}
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                    placeholder="Ej. 150.00"
+                  />
+                </div>
+              )}
+            </div>
 
             <div className="pt-2">
               <button
@@ -411,10 +471,19 @@ export const FormularioPagos = ({ empleados = [] }) => {
                       </div>
                     )}
 
-                    <div className="flex justify-between text-sm text-rose-600">
-                      <span>Descuento por Adelantos:</span>
-                      <span>-${Number(pagoCalculado.adelanto_salario || 0).toFixed(2)}</span>
-                    </div>
+                    {pagoCalculado.adelanto_salario > 0 && (
+                      <div className="flex justify-between text-sm text-rose-600 font-medium">
+                        <span>Descuento de Adelanto:</span>
+                        <span>-${Number(pagoCalculado.adelanto_salario).toFixed(2)}</span>
+                      </div>
+                    )}
+
+                    {pagoCalculado.descuento_credito > 0 && (
+                      <div className="flex justify-between text-sm text-rose-600 font-medium">
+                        <span>Abono a crédito:</span>
+                        <span>-${Number(pagoCalculado.descuento_credito).toFixed(2)}</span>
+                      </div>
+                    )}
                     
                     <div className="pt-4 mt-2 border-t border-emerald-200">
                       <div className="flex justify-between items-end">

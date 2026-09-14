@@ -1,20 +1,18 @@
 import React from 'react';
 import { PDFDownloadLink } from '@react-pdf/renderer';
-import { ReciboPrestacionPDF } from './ReciboPrestacionPDF';
-import { ReciboHonorariosPDF } from './ReciboHonorariosPDF';
 import { ReciboSalarioPDF } from './ReciboSalarioPDF';
 import { Download, FileText } from 'lucide-react';
 
 export const BotonDescargaPDF = ({ tipoRecibo, empleado, pago, monto, montoLetras }) => {
   if (!empleado || !pago) return null;
 
-  // Enrutamiento correcto de los tres tipos de recibo disponibles
-  const Documento = tipoRecibo === 'honorarios' ? (
-    <ReciboHonorariosPDF empleado={empleado} monto={monto} montoLetras={montoLetras} />
-  ) : tipoRecibo === 'quincena' ? (
-    <ReciboSalarioPDF empleado={empleado} pago={pago} />
-  ) : (
-    <ReciboPrestacionPDF empleado={empleado} pago={pago} />
+  const Documento = (
+    <ReciboSalarioPDF 
+      empleado={empleado} 
+      pago={pago} 
+      monto={monto} 
+      montoLetras={montoLetras} 
+    />
   );
 
   const nombreEmpleado = empleado.nombre_completo ? empleado.nombre_completo.replace(/\s+/g, '_') : 'Empleado';

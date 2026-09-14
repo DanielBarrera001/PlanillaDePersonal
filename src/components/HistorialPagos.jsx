@@ -8,7 +8,7 @@ export const HistorialPagos = () => {
   const [historial, setHistorial] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState('');
-  const [filtroTipo, setFiltroTipo] = useState('todos'); // Estado para el nuevo filtro por concepto
+  const [filtroTipo, setFiltroTipo] = useState('todos');
 
   const cargarHistorial = async () => {
     setCargando(true);
@@ -28,14 +28,16 @@ export const HistorialPagos = () => {
     cargarHistorial();
   }, []);
 
-  const formatearTipo = (tipo, esAdelanto) => {
-    if (esAdelanto) return 'Adelanto / Préstamo';
+  const formatearTipo = (tipo, esEspecial) => {
+    if (esEspecial && tipo === 'credito') return 'Crédito / Inversión';
+    if (esEspecial) return 'Adelanto / Préstamo';
     const tipos = {
       aguinaldo: 'Aguinaldo',
       vacaciones: 'Vacaciones',
       quincena_25: 'Quincena 25',
       quincena: 'Salario Quincenal',
-      honorarios: 'Honorarios'
+      honorarios: 'Honorarios',
+      credito: 'Crédito'
     };
     return tipos[tipo] || tipo;
   };
@@ -48,29 +50,26 @@ export const HistorialPagos = () => {
     }
   };
 
-  // Filtrar registros por nombre del colaborador y por el tipo/concepto seleccionado
   const historialFiltrado = historial.filter((item) => {
     const coincideNombre = item.empleados?.nombre_completo?.toLowerCase().includes(busqueda.toLowerCase()) ||
                            item.empleado_nombre?.toLowerCase().includes(busqueda.toLowerCase());
     
-    const esSoloAdelanto = Number(item.monto_bruto) === 0 && Number(item.adelanto_salario) > 0;
+    const esEspecial = (Number(item.monto_bruto) === 0 && Number(item.adelanto_salario) > 0) || item.tipo_pago === 'credito';
 
     if (!coincideNombre) return false;
 
     if (filtroTipo === 'todos') return true;
-    if (filtroTipo === 'adelantos') return esSoloAdelanto;
-    if (filtroTipo === 'quincena') return item.tipo_pago === 'quincena' && !esSoloAdelanto;
-    if (filtroTipo === 'quincena_25') return item.tipo_pago === 'quincena_25' && !esSoloAdelanto;
-    if (filtroTipo === 'aguinaldo') return item.tipo_pago === 'aguinaldo' && !esSoloAdelanto;
-    if (filtroTipo === 'vacaciones') return item.tipo_pago === 'vacaciones' && !esSoloAdelanto;
-    if (filtroTipo === 'honorarios') return item.tipo_pago === 'honorarios' && !esSoloAdelanto;
-
+    if (filtroTipo === 'adelantos') return Number(item.monto_bruto) === 0 && Number(item.adelanto_salario) > 0;
+    if (filtroTipo === 'credito') return item.tipo_pago === 'credito';
+    if (filtroTipo === 'quincena') return item.tipo_pago === 'quincena' && !esEspecial;
+    if (filtroTipo === 'quincena_25') return item.tipo_pago === 'quincena_25' && !esEspecial;
+    if (filtroTipo === 'aguinaldo') return item.tipo_pago === 'aguinaldo' && !esEspecial;
+    if (filtroTipo === 'vacaciones') return item.tipo_pago === 'vacaciones' && !esEspecial;
     return true;
   });
 
   return (
     <div className="w-full bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8">
-      {/* Cabecera de la sección */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
         <div>
           <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
@@ -80,9 +79,7 @@ export const HistorialPagos = () => {
           <p className="text-slate-500 text-sm mt-1">Consulta, reimprime o descarga los comprobantes y adelantos emitidos.</p>
         </div>
 
-        {/* Controles de Búsqueda y Filtros */}
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-          {/* Selector de Filtro por Concepto */}
           <div className="relative flex-grow sm:flex-grow-0">
             <select
               value={filtroTipo}
@@ -91,15 +88,14 @@ export const HistorialPagos = () => {
             >
               <option value="todos">Todos los conceptos</option>
               <option value="adelantos">Adelantos / Préstamos</option>
+              <option value="credito">Créditos</option>
               <option value="quincena">Salario Quincenal</option>
               <option value="quincena_25">Quincena 25</option>
               <option value="aguinaldo">Aguinaldo</option>
               <option value="vacaciones">Vacaciones</option>
-              <option value="honorarios">Honorarios</option>
             </select>
           </div>
 
-          {/* Buscador por Nombre */}
           <div className="relative flex-grow sm:w-64">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
             <input
@@ -121,7 +117,6 @@ export const HistorialPagos = () => {
         </div>
       </div>
 
-      {/* Tabla de Registros */}
       {cargando ? (
         <div className="flex justify-center items-center py-16">
           <div className="animate-spin rounded-full h-10 w-10 border-4 border-emerald-500 border-t-transparent"></div>
@@ -135,7 +130,7 @@ export const HistorialPagos = () => {
                 <th className="px-5 py-4">Colaborador</th>
                 <th className="px-5 py-4">Concepto / Detalle</th>
                 <th className="px-5 py-4 text-right">Monto Bruto</th>
-                <th className="px-5 py-4 text-right">Adelantos</th>
+                <th className="px-5 py-4 text-right">Adelantos / Créditos</th>
                 <th className="px-5 py-4 text-right">Líquido / Neto</th>
                 <th className="px-5 py-4 text-center">Acciones</th>
               </tr>
@@ -149,7 +144,12 @@ export const HistorialPagos = () => {
                 </tr>
               ) : (
                 historialFiltrado.map((registro) => {
-                  const esSoloAdelanto = Number(registro.monto_bruto) === 0 && Number(registro.adelanto_salario) > 0;
+                  const esEspecial = (Number(registro.monto_bruto) === 0 && Number(registro.adelanto_salario) > 0) || registro.tipo_pago === 'credito';
+                  
+                  // Captura el valor ya sea de adelanto, de credito_otorgado o del monto neto si es un registro directo de crédito
+                  const valorMontoEspecial = Number(registro.adelanto_salario) > 0 
+                    ? Number(registro.adelanto_salario) 
+                    : (Number(registro.credito_otorgado) > 0 ? Number(registro.credito_otorgado) : Number(registro.monto_neto || 0));
 
                   return (
                     <tr key={registro.id} className="hover:bg-slate-50/80 transition-colors">
@@ -159,9 +159,9 @@ export const HistorialPagos = () => {
                       </td>
                       <td className="px-5 py-4">
                         <span className={`px-3 py-1 rounded-lg text-xs font-bold tracking-wide ${
-                          esSoloAdelanto ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
+                          esEspecial ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
                         }`}>
-                          {formatearTipo(registro.tipo_pago, esSoloAdelanto)}
+                          {formatearTipo(registro.tipo_pago, esEspecial)}
                         </span>
                         {registro.observaciones && (
                           <p className="text-[11px] text-slate-400 mt-0.5">{registro.observaciones}</p>
@@ -169,14 +169,14 @@ export const HistorialPagos = () => {
                       </td>
                       <td className="px-5 py-4 text-right text-slate-700">${Number(registro.monto_bruto).toFixed(2)}</td>
                       <td className="px-5 py-4 text-right text-rose-600 font-medium">
-                        {registro.adelanto_salario > 0 ? `-$${Number(registro.adelanto_salario).toFixed(2)}` : '-'}
+                        {valorMontoEspecial > 0 ? `-$${valorMontoEspecial.toFixed(2)}` : '-'}
                       </td>
-                      <td className={`px-5 py-4 text-right font-extrabold ${esSoloAdelanto ? 'text-rose-600' : 'text-emerald-600'}`}>
+                      <td className={`px-5 py-4 text-right font-extrabold ${esEspecial ? 'text-rose-600' : 'text-emerald-600'}`}>
                         ${Number(registro.monto_neto).toFixed(2)}
                       </td>
                       <td className="px-5 py-4 text-center">
                         <div className="flex items-center justify-center gap-2">
-                          {!esSoloAdelanto ? (
+                          {!esEspecial ? (
                             <BotonDescargaPDF 
                               tipoRecibo={registro.tipo_pago}
                               empleado={registro.empleados}
@@ -185,7 +185,7 @@ export const HistorialPagos = () => {
                               montoLetras={numeroALetras(registro.monto_neto)}
                             />
                           ) : (
-                            <span className="text-[11px] text-slate-400 italic">Préstamo / Adelanto</span>
+                            <span className="text-[11px] text-slate-400 italic">Registro Interno</span>
                           )}
 
                           <button 

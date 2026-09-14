@@ -1,16 +1,22 @@
 .counter {
-  font-size: 16px;
-  padding: 5px 10px;
-  border-radius: 5px;
+  font-size: 15px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 9999px; /* Estilo píldora más moderno */
   color: var(--accent);
   background: var(--accent-bg);
-  border: 2px solid transparent;
-  transition: border-color 0.3s;
+  border: 1px solid var(--accent-border, transparent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   margin-bottom: 24px;
+  display: inline-block;
 
   &:hover {
-    border-color: var(--accent-border);
+    border-color: var(--accent);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   }
+  
   &:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
@@ -19,6 +25,7 @@
 
 .hero {
   position: relative;
+  padding: 20px 0;
 
   .base,
   .framework,
@@ -28,22 +35,23 @@
   }
 
   .base {
-    width: 170px;
+    width: 180px;
     position: relative;
     z-index: 0;
+    filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.15));
   }
 
   .framework,
   .vite {
     position: absolute;
+    transition: transform 0.5s ease;
   }
 
   .framework {
     z-index: 1;
     top: 34px;
     height: 28px;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(44deg) rotateY(39deg)
-      scale(1.4);
+    transform: perspective(2000px) rotateZ(300deg) rotateX(44deg) rotateY(39deg) scale(1.4);
   }
 
   .vite {
@@ -51,8 +59,7 @@
     top: 107px;
     height: 26px;
     width: auto;
-    transform: perspective(2000px) rotateZ(300deg) rotateX(40deg) rotateY(39deg)
-      scale(0.8);
+    transform: perspective(2000px) rotateZ(300deg) rotateX(40deg) rotateY(39deg) scale(0.8);
   }
 }
 
@@ -63,6 +70,7 @@
   place-content: center;
   place-items: center;
   flex-grow: 1;
+  padding: 40px 20px;
 
   @media (max-width: 1024px) {
     padding: 32px 20px 24px;
@@ -74,10 +82,12 @@
   display: flex;
   border-top: 1px solid var(--border);
   text-align: left;
+  background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.01));
 
   & > div {
     flex: 1 1 0;
-    padding: 32px;
+    padding: 40px;
+    
     @media (max-width: 1024px) {
       padding: 24px 20px;
     }
@@ -85,8 +95,9 @@
 
   .icon {
     margin-bottom: 16px;
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
+    opacity: 0.85;
   }
 
   @media (max-width: 1024px) {
@@ -108,8 +119,9 @@
   list-style: none;
   padding: 0;
   display: flex;
-  gap: 8px;
-  margin: 32px 0 0;
+  gap: 10px;
+  margin: 28px 0 0;
+  flex-wrap: wrap;
 
   .logo {
     height: 18px;
@@ -117,19 +129,26 @@
 
   a {
     color: var(--text-h);
-    font-size: 16px;
-    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 8px;
     background: var(--social-bg);
+    border: 1px solid var(--border);
     display: flex;
-    padding: 6px 12px;
+    padding: 8px 14px;
     align-items: center;
     gap: 8px;
     text-decoration: none;
-    transition: box-shadow 0.3s;
+    transition: all 0.25s ease;
 
     &:hover {
+      background: var(--accent-bg);
+      border-color: var(--accent-border, var(--accent));
+      color: var(--accent);
+      transform: translateY(-2px);
       box-shadow: var(--shadow);
     }
+
     .button-icon {
       height: 18px;
       width: 18px;
@@ -138,7 +157,6 @@
 
   @media (max-width: 1024px) {
     margin-top: 20px;
-    flex-wrap: wrap;
     justify-content: center;
 
     li {
@@ -154,16 +172,21 @@
 }
 
 #spacer {
-  height: 88px;
+  height: 60px;
   border-top: 1px solid var(--border);
+  background: radial-gradient(circle at center, var(--border) 0%, transparent 70%);
+  opacity: 0.4;
+
   @media (max-width: 1024px) {
-    height: 48px;
+    height: 36px;
   }
 }
 
 .ticks {
   position: relative;
   width: 100%;
+  height: 1px;
+  background-color: var(--border);
 
   &::before,
   &::after {
