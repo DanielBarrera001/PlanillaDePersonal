@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { calcularAguinaldo, calcularVacaciones, calcularQuincena25 } from '../utils/calculos';
+import { calcularAguinaldo, calcularVacaciones, calcularQuincena25, calcularIndemnizacion } from '../utils/calculos';
 import { numeroALetras } from '../utils/numeroALetras';
 import { BotonDescargaPDF } from './pdf/BotonDescargaPDF';
 import { Calculator, Receipt, CreditCard, Users, Calendar, Award, DollarSign } from 'lucide-react';
@@ -100,6 +100,7 @@ export const FormularioPagos = ({ empleados = [] }) => {
     const salarioBaseNum = parseFloat(empleado.salario_base) || 0;
     const esHonorarios = empleado.tipo_empleado === 'honorarios';
 
+    
     if (tipoPago === 'honorarios') {
       const montoNum = parseFloat(montoHonorario) || salarioBaseNum;
       if (montoNum <= 0) {
@@ -132,6 +133,8 @@ export const FormularioPagos = ({ empleados = [] }) => {
         resCalc = calcularVacaciones(salarioBaseNum, 30, 0);
       } else if (tipoPago === 'quincena_25') {
         resCalc = calcularQuincena25(salarioBaseNum, empleado.fecha_ingreso, 0);
+      } else if (tipoPago === 'indemnizacion') {
+        resCalc = calcularIndemnizacion(salarioBaseNum, empleado.fecha_ingreso);
       } else if (tipoPago === 'quincena') {
         const montoBrutoQuincena = salarioBaseNum / 2;
         const descuentoISSS = esHonorarios ? 0 : Math.min(montoBrutoQuincena, 500) * 0.03;
@@ -340,6 +343,7 @@ export const FormularioPagos = ({ empleados = [] }) => {
                   <option value="quincena_25">Quincena 25</option>
                   <option value="aguinaldo">Aguinaldo</option>
                   <option value="vacaciones">Vacaciones</option>
+                  <option value="indemnizacion">Indemización</option>
                 </select>
               </div>
 

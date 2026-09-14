@@ -1,29 +1,25 @@
-// 1. CÁLCULO DE AGUINALDO (Con opción de Renta y Adelantos)
+// 1. CÁLCULO DE AGUINALDO (Liquidación Anual)
 export function calcularAguinaldo(salarioMensual, fechaIngreso, adelantos = 0, aplicaRenta = false, tasaRenta = 0, fechaCalculo = new Date()) {
-  const ingreso = new Date(fechaIngreso);
+  if (!fechaIngreso) return { diasCorresponden: 0, montoBruto: 0, montoNeto: 0, descuentoRenta: 0, adelantos: Number(adelantos) };
+
   const calculo = new Date(fechaCalculo);
+  const anioCalculo = calculo.getFullYear();
   
-  const diffTiempo = Math.abs(calculo - ingreso);
+  // Fijamos el tope máximo de antigüedad al 1 de enero del año actual
+  const inicioAnio = new Date(`${anioCalculo}-01-01T00:00:00`);
+  const ingresoOriginal = new Date(fechaIngreso + 'T00:00:00');
+  
+  // Toma la fecha más reciente: o el 1 de enero, o cuando entró a laborar este año
+  const fechaInicio = ingresoOriginal > inicioAnio ? ingresoOriginal : inicioAnio;
+  
+  const diffTiempo = Math.abs(calculo - fechaInicio);
   const diasTrabajados = Math.floor(diffTiempo / (1000 * 60 * 60 * 24));
-  const anosAntiguedad = Math.floor(diasTrabajados / 365);
   
   const salarioDiario = salarioMensual / 30;
-  let diasCorresponden = 0;
-  let montoBruto = 0;
-
-  if (anosAntiguedad < 1) {
-    montoBruto = ((salarioDiario * 15) / 365) * diasTrabajados;
-    diasCorresponden = Number(((15 / 365) * diasTrabajados).toFixed(2));
-  } else if (anosAntiguedad >= 1 && anosAntiguedad < 3) {
-    diasCorresponden = 15;
-    montoBruto = salarioDiario * 15;
-  } else if (anosAntiguedad >= 3 && anosAntiguedad < 10) {
-    diasCorresponden = 19;
-    montoBruto = salarioDiario * 19;
-  } else {
-    diasCorresponden = 21;
-    montoBruto = salarioDiario * 21;
-  }
+  
+  // Al liquidarse cada año, siempre es el proporcional a los 15 días básicos de ley
+  const montoBruto = ((salarioDiario * 15) / 365) * diasTrabajados;
+  const diasCorresponden = Number(((15 / 365) * diasTrabajados).toFixed(2));
 
   const descuentoRenta = aplicaRenta ? montoBruto * (tasaRenta / 100) : 0;
   const montoNeto = montoBruto - descuentoRenta - adelantos;
@@ -31,12 +27,12 @@ export function calcularAguinaldo(salarioMensual, fechaIngreso, adelantos = 0, a
   return {
     diasCorresponden,
     montoBruto: Number(montoBruto.toFixed(2)),
-    descuentoISSS: 0, // Exento por ley
-    descuentoAFP: 0,  // Exento por ley
+    descuentoISSS: 0, 
+    descuentoAFP: 0, 
     descuentoRenta: Number(descuentoRenta.toFixed(2)),
     adelantos: Number(adelantos),
     montoNeto: Number(montoNeto.toFixed(2)),
-    anosAntiguedad,
+    anosAntiguedad: 0, // Se anula la acumulación de años por política de la empresa
     diasTrabajados
   };
 }
@@ -103,5 +99,40 @@ export function calcularDiasAnualidad(fechaIngreso, diasTomadosEstePeriodo = 0) 
     diasDisponibles,
     diasTomados: diasTomadosEstePeriodo,
     periodoTexto: `${inicioPeriodo.toLocaleDateString()} - ${finPeriodo.toLocaleDateString()}`
+  };
+}
+
+// 5. CÁLCULO DE INDEMNIZACIÓN (Liquidación Anual)
+export function calcularIndemnizacion(salarioMensual, fechaIngreso, fechaRetiro = new Date(), adelantos = 0) {
+  if (!fechaIngreso) {
+    return { diasCorresponden: 0, anosServicio: 0, montoBruto: 0, descuentoISSS: 0, descuentoAFP: 0, descuentoRenta: 0, adelantos: Number(adelantos), montoNeto: 0 };
+  }
+
+  const retiro = new Date(fechaRetiro);
+  const anioRetiro = retiro.getFullYear();
+  
+  // Fijamos el tope máximo al 1 de enero del año del retiro
+  const inicioAnio = new Date(`${anioRetiro}-01-01T00:00:00`);
+  const ingresoOriginal = new Date(fechaIngreso + 'T00:00:00');
+  
+  const fechaInicio = ingresoOriginal > inicioAnio ? ingresoOriginal : inicioAnio;
+  
+  const diffTiempo = Math.abs(retiro - fechaInicio);
+  const diasTrabajados = Math.floor(diffTiempo / (1000 * 60 * 60 * 24));
+  const proporcionAnio = diasTrabajados / 365;
+  
+  // Indemnización proporcional a los meses/días laborados únicamente en el año actual
+  const montoBruto = salarioMensual * proporcionAnio;
+  const montoNeto = montoBruto - adelantos;
+
+  return {
+    diasCorresponden: Number(diasTrabajados.toFixed(0)),
+    anosServicio: Number(proporcionAnio.toFixed(2)),
+    montoBruto: Number(montoBruto.toFixed(2)),
+    descuentoISSS: 0,
+    descuentoAFP: 0,
+    descuentoRenta: 0,
+    adelantos: Number(adelantos),
+    montoNeto: Number(montoNeto.toFixed(2))
   };
 }

@@ -94,6 +94,7 @@ export const ReciboPrestacionPDF = ({ empleado, pago }) => {
       case 'vacaciones': return 'Comprobante de Pago de Vacaciones';
       case 'quincena_25': return 'Comprobante de Pago Quincenal';
       case 'indemnizacion': return 'Comprobante de Pago de Indemnización';
+      case 'indemnizacion': return 'Comprobante de Pago de Indemnización';
       default: return 'Comprobante de Pago';
     }
   };
@@ -188,7 +189,10 @@ export const ReciboPrestacionPDF = ({ empleado, pago }) => {
 
         <Text style={styles.legalText}>
           Recibí a mi entera satisfacción la cantidad de {pago.monto_letras || ''} (${Number(pago.monto_neto).toFixed(2)}) 
-          en concepto de pago por {getTitulo(pago.tipo_pago).toLowerCase()}, conforme a las disposiciones legales vigentes.
+          en concepto de pago por {getTitulo(pago.tipo_pago).toLowerCase()}, los cuales recibo en este acto a mi entera satisfacción, no teniendo ninguna 
+          otra suma de dinero en concepto de honorarios ordinarios ni extraordinarios, trabajo en concepto de contraprestación de ninguna
+          otra suma de dinero, puesto que todas las cantidades que devengue en esos conceptos mientras trabajé al servicio de ustedes, me 
+          fueron canceladas a mi entera satisfacción en su oportunidad, no teniendo ningún reclamo presente o futuro. Firmo la presente.
         </Text>
 
         <View style={styles.signatures}>

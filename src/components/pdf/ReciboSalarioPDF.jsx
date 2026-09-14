@@ -92,8 +92,11 @@ export const ReciboSalarioPDF = ({ empleado, pago }) => {
         </View>
 
         <Text style={styles.legalText}>
-          Recibí a mi entera satisfacción la cantidad de {pago.monto_letras || ''} (${Number(pago.monto_neto).toFixed(2)}) 
-          en concepto de pago de salario ordinario, habiéndose efectuado las deducciones de ley correspondientes.
+          Recibí a mi entera satisfacción la cantidad de {pago.monto_letras || ''} (${Number(pago.monto_neto).toFixed(2)}).
+          En concepto de pago por servicios, los cuales recibo en este acto a mi entera satisfacción, no teniendo ninguna 
+          otra suma de dinero en concepto de honorarios ordinarios ni extraordinarios, trabajo en concepto de contraprestación de ninguna
+          otra suma de dinero, puesto que todas las cantidades que devengue en esos conceptos mientras trabajé al servicio de ustedes, me 
+          fueron canceladas a mi entera satisfacción en su oportunidad, no teniendo ningún reclamo presente o futuro. Firmo la presente.
         </Text>
 
         <View style={styles.signatures}>

@@ -53,7 +53,11 @@ export const ReciboHonorariosPDF = ({ empleado, monto, montoLetras }) => {
         </View>
 
         <Text style={styles.bodyText}>
-          Por este medio recibí la cantidad de {montoLetras} (${Number(monto).toFixed(2)}) en concepto de pago por servicios, los cuales recibo en este acto a mi entera satisfacción, no teniendo ninguna otra suma de dinero en concepto de honorarios ordinarios ni extraordinarios, trabajo en concepto de contraprestación de ninguna otra suma de dinero, vacaciones, días de asueto, indemnizaciones, horas extras, puesto que todas las cantidades que devengue en esos conceptos mientras trabajé al servicio de ustedes, me fueron canceladas a mi entera satisfacción en su oportunidad, no teniendo ningún reclamo presente o futuro. Firmo la presente.
+          Por este medio recibí la cantidad de {montoLetras} (${Number(monto).toFixed(2)}) en concepto de pago por servicios, 
+          los cuales recibo en este acto a mi entera satisfacción, no teniendo ninguna otra suma de dinero en concepto de honorarios 
+          ordinarios ni extraordinarios, trabajo en concepto de contraprestación de ninguna otra suma de dinero, vacaciones, días de asueto, 
+          indemnizaciones, horas extras, puesto que todas las cantidades que devengue en esos conceptos mientras trabajé al servicio de ustedes, 
+          me fueron canceladas a mi entera satisfacción en su oportunidad, no teniendo ningún reclamo presente o futuro. Firmo la presente.
         </Text>
 
         <View style={styles.signatureArea}>
