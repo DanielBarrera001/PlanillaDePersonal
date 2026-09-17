@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { RefreshCcw, History, Search, Trash2, Filter } from 'lucide-react';
+import { RefreshCcw, History, Search, Trash2 } from 'lucide-react';
 import { BotonDescargaPDF } from './pdf/BotonDescargaPDF';
 import { numeroALetras } from '../utils/numeroALetras';
 
@@ -28,9 +28,8 @@ export const HistorialPagos = () => {
     cargarHistorial();
   }, []);
 
-  const formatearTipo = (tipo, esEspecial) => {
-    if (esEspecial && tipo === 'credito') return 'Crédito / Inversión';
-    if (esEspecial) return 'Adelanto / Préstamo';
+  const formatearTipo = (tipo, esAdelantoPuro) => {
+    if (esAdelantoPuro) return 'Adelanto / Préstamo';
     const tipos = {
       aguinaldo: 'Aguinaldo',
       vacaciones: 'Vacaciones',
@@ -54,17 +53,18 @@ export const HistorialPagos = () => {
     const coincideNombre = item.empleados?.nombre_completo?.toLowerCase().includes(busqueda.toLowerCase()) ||
                            item.empleado_nombre?.toLowerCase().includes(busqueda.toLowerCase());
     
-    const esEspecial = (Number(item.monto_bruto) === 0 && Number(item.adelanto_salario) > 0) || item.tipo_pago === 'credito';
+    // Un adelanto puro es aquel cuyo monto bruto es 0 y se entregó dinero de adelanto
+    const esAdelantoPuro = Number(item.monto_bruto) === 0 && Number(item.adelanto_salario) > 0;
 
     if (!coincideNombre) return false;
 
     if (filtroTipo === 'todos') return true;
-    if (filtroTipo === 'adelantos') return Number(item.monto_bruto) === 0 && Number(item.adelanto_salario) > 0;
+    if (filtroTipo === 'adelantos') return esAdelantoPuro;
     if (filtroTipo === 'credito') return item.tipo_pago === 'credito';
-    if (filtroTipo === 'quincena') return item.tipo_pago === 'quincena' && !esEspecial;
-    if (filtroTipo === 'quincena_25') return item.tipo_pago === 'quincena_25' && !esEspecial;
-    if (filtroTipo === 'aguinaldo') return item.tipo_pago === 'aguinaldo' && !esEspecial;
-    if (filtroTipo === 'vacaciones') return item.tipo_pago === 'vacaciones' && !esEspecial;
+    if (filtroTipo === 'quincena') return item.tipo_pago === 'quincena' && !esAdelantoPuro;
+    if (filtroTipo === 'quincena_25') return item.tipo_pago === 'quincena_25' && !esAdelantoPuro;
+    if (filtroTipo === 'aguinaldo') return item.tipo_pago === 'aguinaldo' && !esAdelantoPuro;
+    if (filtroTipo === 'vacaciones') return item.tipo_pago === 'vacaciones' && !esAdelantoPuro;
     return true;
   });
 
@@ -130,7 +130,7 @@ export const HistorialPagos = () => {
                 <th className="px-5 py-4">Colaborador</th>
                 <th className="px-5 py-4">Concepto / Detalle</th>
                 <th className="px-5 py-4 text-right">Monto Bruto</th>
-                <th className="px-5 py-4 text-right">Adelantos / Créditos</th>
+                <th className="px-5 py-4 text-right">Deducciones / Abonos</th>
                 <th className="px-5 py-4 text-right">Líquido / Neto</th>
                 <th className="px-5 py-4 text-center">Acciones</th>
               </tr>
@@ -144,12 +144,10 @@ export const HistorialPagos = () => {
                 </tr>
               ) : (
                 historialFiltrado.map((registro) => {
-                  const esEspecial = (Number(registro.monto_bruto) === 0 && Number(registro.adelanto_salario) > 0) || registro.tipo_pago === 'credito';
+                  const esAdelantoPuro = Number(registro.monto_bruto) === 0 && Number(registro.adelanto_salario) > 0;
                   
-                  // Captura el valor ya sea de adelanto, de credito_otorgado o del monto neto si es un registro directo de crédito
-                  const valorMontoEspecial = Number(registro.adelanto_salario) > 0 
-                    ? Number(registro.adelanto_salario) 
-                    : (Number(registro.credito_otorgado) > 0 ? Number(registro.credito_otorgado) : Number(registro.monto_neto || 0));
+                  // Sumamos las deducciones reales aplicadas en este pago (Adelanto descontado + Abono a crédito)
+                  const totalDeduccionesAplicadas = Number(registro.adelanto_salario || 0) + Number(registro.descuento_credito || 0);
 
                   return (
                     <tr key={registro.id} className="hover:bg-slate-50/80 transition-colors">
@@ -159,9 +157,9 @@ export const HistorialPagos = () => {
                       </td>
                       <td className="px-5 py-4">
                         <span className={`px-3 py-1 rounded-lg text-xs font-bold tracking-wide ${
-                          esEspecial ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
+                          esAdelantoPuro ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
                         }`}>
-                          {formatearTipo(registro.tipo_pago, esEspecial)}
+                          {formatearTipo(registro.tipo_pago, esAdelantoPuro)}
                         </span>
                         {registro.observaciones && (
                           <p className="text-[11px] text-slate-400 mt-0.5">{registro.observaciones}</p>
@@ -169,14 +167,14 @@ export const HistorialPagos = () => {
                       </td>
                       <td className="px-5 py-4 text-right text-slate-700">${Number(registro.monto_bruto).toFixed(2)}</td>
                       <td className="px-5 py-4 text-right text-rose-600 font-medium">
-                        {valorMontoEspecial > 0 ? `-$${valorMontoEspecial.toFixed(2)}` : '-'}
+                        {totalDeduccionesAplicadas > 0 ? `-$${totalDeduccionesAplicadas.toFixed(2)}` : '-'}
                       </td>
-                      <td className={`px-5 py-4 text-right font-extrabold ${esEspecial ? 'text-rose-600' : 'text-emerald-600'}`}>
+                      <td className={`px-5 py-4 text-right font-extrabold ${esAdelantoPuro ? 'text-rose-600' : 'text-emerald-600'}`}>
                         ${Number(registro.monto_neto).toFixed(2)}
                       </td>
                       <td className="px-5 py-4 text-center">
                         <div className="flex items-center justify-center gap-2">
-                          {!esEspecial ? (
+                          {!esAdelantoPuro ? (
                             <BotonDescargaPDF 
                               tipoRecibo={registro.tipo_pago}
                               empleado={registro.empleados}

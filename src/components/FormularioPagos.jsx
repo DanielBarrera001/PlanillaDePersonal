@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { calcularAguinaldo, calcularVacaciones, calcularQuincena25, calcularIndemnizacion } from '../utils/calculos';
 import { numeroALetras } from '../utils/numeroALetras';
 import { BotonDescargaPDF } from './pdf/BotonDescargaPDF';
-import { Calculator, Receipt, CreditCard, Users, Calendar, Award, DollarSign } from 'lucide-react';
+import { Calculator, Receipt, CreditCard, Users, Calendar, Award, DollarSign, Clock } from 'lucide-react';
 
 export const FormularioPagos = ({ empleados = [] }) => {
   const [totalCreditosPendientes, setTotalCreditosPendientes] = useState(0);
@@ -21,6 +21,9 @@ export const FormularioPagos = ({ empleados = [] }) => {
   const [saldoCreditoInversion, setSaldoCreditoInversion] = useState(0);
   const [abonoCreditoFlex, setAbonoCreditoFlex] = useState(''); 
 
+  // 3. HORAS EXTRAS (Monto manual dictado por el jefe)
+  const [montoHorasExtras, setMontoHorasExtras] = useState('');
+
   const [montoHonorario, setMontoHonorario] = useState(0);
   const [pagoCalculado, setPagoCalculado] = useState(null);
   const [guardando, setGuardando] = useState(false);
@@ -36,6 +39,7 @@ export const FormularioPagos = ({ empleados = [] }) => {
       setAdelantoPendiente(0);
       setSaldoCreditoInversion(0);
       setAbonoCreditoFlex('');
+      setMontoHorasExtras('');
     }
   }, [empleadoSeleccionado]);
 
@@ -78,7 +82,6 @@ export const FormularioPagos = ({ empleados = [] }) => {
   };
 
   const cargarDeudasEmpleado = async (empId) => {
-    // 1. Cargar Adelantos (Busca registros donde se dio dinero y no se han saldado)
     const { data: adelantosData } = await supabase
       .from('pagos_registro')
       .select('adelanto_salario, observaciones')
@@ -94,7 +97,6 @@ export const FormularioPagos = ({ empleados = [] }) => {
       setAdelantoPendiente(0);
     }
 
-    // 2. Cargar Crédito de Inversión (Calcula saldo: Total Otorgado MENOS Total de Abonos registrados)
     const { data: creditosData } = await supabase
       .from('pagos_registro')
       .select('credito_otorgado, descuento_credito')
@@ -105,7 +107,7 @@ export const FormularioPagos = ({ empleados = [] }) => {
       const abonados = creditosData.reduce((acc, curr) => acc + Number(curr.descuento_credito || 0), 0);
       const saldoActual = Math.max(0, otorgados - abonados);
       setSaldoCreditoInversion(saldoActual);
-      setAbonoCreditoFlex(''); // Inicia vacío para que digites lo que el empleado te abonará HOY (puede ser $0, $30, $150, etc.)
+      setAbonoCreditoFlex('');
     } else {
       setSaldoCreditoInversion(0);
       setAbonoCreditoFlex('');
@@ -121,12 +123,12 @@ export const FormularioPagos = ({ empleados = [] }) => {
     }
 
     let resultado = {};
-    const adelantoNum = parseFloat(adelantoPendiente) || 0; // Se descuenta sí o sí completo
-    const abonoFlexNum = parseFloat(abonoCreditoFlex) || 0;  // Lo que decidas abonar hoy al crédito de inversión (puede ser 0)
+    const adelantoNum = parseFloat(adelantoPendiente) || 0; 
+    const abonoFlexNum = parseFloat(abonoCreditoFlex) || 0;  
+    const horasExtrasNum = parseFloat(montoHorasExtras) || 0; // Monto manual de horas extras
     const salarioBaseNum = parseFloat(empleado.salario_base) || 0;
     const esHonorarios = empleado.tipo_empleado === 'honorarios';
 
-    // Validación: No abonar más al crédito de lo que realmente debe
     if (abonoFlexNum > saldoCreditoInversion) {
       setPagoCalculado(null);
       alert(`ERROR: El abono al crédito ($${abonoFlexNum.toFixed(2)}) supera el saldo pendiente ($${saldoCreditoInversion.toFixed(2)}).`);
@@ -134,7 +136,7 @@ export const FormularioPagos = ({ empleados = [] }) => {
     }
 
     if (tipoPago === 'honorarios') {
-      const montoNum = parseFloat(montoHonorario) || salarioBaseNum;
+      const montoNum = (parseFloat(montoHonorario) || salarioBaseNum) + horasExtrasNum;
       if (montoNum <= 0) {
         alert('Ingresa un monto válido para los honorarios.');
         return;
@@ -149,12 +151,13 @@ export const FormularioPagos = ({ empleados = [] }) => {
 
       resultado = {
         tipo_pago: 'honorarios',
-        monto_bruto: montoNum,
+        monto_bruto: (parseFloat(montoHonorario) || salarioBaseNum),
+        horas_extras: horasExtrasNum,
         descuento_isss: 0,
         descuento_afp: 0,
         descuento_renta: 0,
-        adelanto_salario: adelantoNum,    // Adelanto descontado de golpe
-        descuento_credito: abonoFlexNum, // Abono flexible al crédito de inversión
+        adelanto_salario: adelantoNum,    
+        descuento_credito: abonoFlexNum, 
         monto_neto: montoNum - totalDescuentos,
         monto_letras: numeroALetras(montoNum - totalDescuentos),
       };
@@ -170,7 +173,16 @@ export const FormularioPagos = ({ empleados = [] }) => {
       } else if (tipoPago === 'indemnizacion') {
         resCalc = calcularIndemnizacion(salarioBaseNum, empleado.fecha_ingreso);
       } else if (tipoPago === 'quincena') {
-        const montoBrutoQuincena = salarioBaseNum / 2;
+        const fechaIngresoEmp = new Date(empleado.fecha_ingreso + 'T00:00:00');
+        const hoy = new Date();
+        
+        const diffTiempo = hoy - fechaIngresoEmp;
+        const diasDesdeIngreso = Math.floor(diffTiempo / (1000 * 60 * 60 * 24));
+        const diasAjustados = (diasDesdeIngreso >= 0 && diasDesdeIngreso < 15) ? diasDesdeIngreso + 1 : 15;
+        
+        const salarioDiario = salarioBaseNum / 30;
+        const montoBrutoQuincena = salarioDiario * diasAjustados;
+        
         const descuentoISSS = esHonorarios ? 0 : Math.min(montoBrutoQuincena, 500) * 0.03;
         const descuentoAFP = esHonorarios ? 0 : montoBrutoQuincena * 0.0725;
         
@@ -179,7 +191,8 @@ export const FormularioPagos = ({ empleados = [] }) => {
           descuentoISSS,
           descuentoAFP,
           descuentoRenta: 0,
-          montoNeto: montoBrutoQuincena - descuentoISSS - descuentoAFP
+          montoNeto: montoBrutoQuincena - descuentoISSS - descuentoAFP,
+          diasCorresponden: diasAjustados
         };
       }
 
@@ -189,9 +202,8 @@ export const FormularioPagos = ({ empleados = [] }) => {
       const finalAFP = esHonorarios ? 0 : Number(resCalc.descuentoAFP || 0);
       const finalRenta = esHonorarios ? 0 : Number(resCalc.descuentoRenta || 0);
       
-      let disponible = resCalc.montoNeto !== undefined 
-        ? Number(resCalc.montoNeto) 
-        : ((bruto + bono) - finalISSS - finalAFP - finalRenta);
+      // Sumamos las horas extras al disponible bruto antes de restar deducciones
+      let disponible = (resCalc.montoNeto !== undefined ? Number(resCalc.montoNeto) : ((bruto + bono) - finalISSS - finalAFP - finalRenta)) + horasExtrasNum;
 
       const totalDescuentos = adelantoNum + abonoFlexNum;
       if (totalDescuentos > disponible) {
@@ -205,13 +217,14 @@ export const FormularioPagos = ({ empleados = [] }) => {
       resultado = {
         tipo_pago: tipoPago,
         fecha_pago: new Date().toLocaleDateString('en-CA', { timeZone: 'America/El_Salvador' }),
-        monto_bruto: bruto > 0 ? bruto : disponible,
+        monto_bruto: bruto > 0 ? bruto : (disponible - horasExtrasNum),
         monto_bono_vacaciones: bono,
+        horas_extras: horasExtrasNum, // Guardamos el valor manual de horas extras
         descuento_isss: finalISSS,
         descuento_afp: finalAFP,
         descuento_renta: finalRenta,
-        adelanto_salario: adelantoNum,    // Adelanto obligatorio de golpe
-        descuento_credito: abonoFlexNum, // Abono flexible al crédito de inversión (puede ser 0)
+        adelanto_salario: adelantoNum,    
+        descuento_credito: abonoFlexNum, 
         monto_neto: netoCalculado,
         dias_calculados: resCalc.diasCorresponden || 15,
         monto_letras: numeroALetras(netoCalculado),
@@ -225,22 +238,22 @@ export const FormularioPagos = ({ empleados = [] }) => {
     if (!pagoCalculado || !empleado) return;
     setGuardando(true);
     
-    // Guardamos el registro con los montos separados en sus respectivas columnas
     const { error } = await supabase.from('pagos_registro').insert([{
       empleado_id: empleado.id,
       empleado_nombre: empleado.nombre_completo,
       tipo_pago: tipoPago,
       monto_bruto: pagoCalculado.monto_bruto,
       monto_bono_vacaciones: pagoCalculado.monto_bono_vacaciones || 0,
+      horas_extras: pagoCalculado.horas_extras || 0, // Asegúrate de tener esta columna o guardarla en observaciones/monto
       descuento_isss: pagoCalculado.descuento_isss || 0,
       descuento_afp: pagoCalculado.descuento_afp || 0,
       descuento_renta: pagoCalculado.descuento_renta || 0,
-      adelanto_salario: pagoCalculado.adelanto_salario || 0,       // Se registra el adelanto descontado
+      adelanto_salario: pagoCalculado.adelanto_salario || 0,       
       credito_otorgado: 0,
-      descuento_credito: pagoCalculado.descuento_credito || 0,     // Se registra el abono flexible al crédito de inversión
+      descuento_credito: pagoCalculado.descuento_credito || 0,     
       monto_neto: pagoCalculado.monto_neto,
       fecha_pago: pagoCalculado.fecha_pago || new Date().toISOString().split('T')[0],
-      observaciones: `Pago de ${tipoPago}`
+      observaciones: `Pago de ${tipoPago} ${pagoCalculado.horas_extras > 0 ? `(Incluye $${pagoCalculado.horas_extras} de horas extras)` : ''}`
     }]);
 
     if (error) {
@@ -249,7 +262,6 @@ export const FormularioPagos = ({ empleados = [] }) => {
       return;
     }
 
-    // Si se cobró el adelanto, lo marcamos como saldado para que desaparezca de futuras deudas de adelanto
     if (pagoCalculado.adelanto_salario > 0) {
       await supabase
         .from('pagos_registro')
@@ -264,6 +276,7 @@ export const FormularioPagos = ({ empleados = [] }) => {
     
     setPagoCalculado(null);
     setAbonoCreditoFlex('');
+    setMontoHorasExtras('');
     cargarMetricasResumen();
     cargarDeudasEmpleado(empleado.id);
   };
@@ -306,44 +319,13 @@ export const FormularioPagos = ({ empleados = [] }) => {
         </div>
       </div>
 
-      {/* Estatus de Vacaciones del Personal (Ley 15 Días) */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-        <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-          <Award className="w-5 h-5 text-emerald-600" />
-          Estatus de Vacaciones del Personal (Ley 15 Días)
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {empleadosConVacaciones.map((emp) => {
-            const porcentaje = Math.min(100, Math.max(0, (emp.diasTomados / 15) * 100));
-            return (
-              <div key={emp.id} className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
-                <div className="flex justify-between items-center text-xs font-bold text-slate-700 mb-1">
-                  <span>{emp.nombre_completo}</span>
-                  <span className="text-emerald-700">{emp.diasDisponibles} días libres</span>
-                </div>
-                <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                  <div 
-                    className="bg-emerald-500 h-full transition-all duration-500" 
-                    style={{ width: `${porcentaje}%` }}
-                  ></div>
-                </div>
-                <div className="flex justify-between items-center text-[10px] text-slate-400 mt-1">
-                  <span>Usados: {emp.diasTomados} días</span>
-                  <span>{emp.tipo_empleado === 'honorarios' ? 'Honorarios' : 'Planilla'}</span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100">
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
             <Calculator className="w-6 h-6 text-emerald-600" />
             Procesamiento de Planilla
           </h2>
-          <p className="text-slate-500 text-sm">Gestiona pagos, adelantos obligatorios y abonos flexibles a créditos de inversión.</p>
+          <p className="text-slate-500 text-sm">Gestiona pagos, adelantos obligatorios, abonos y horas extras.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -386,7 +368,6 @@ export const FormularioPagos = ({ empleados = [] }) => {
                 </select>
               </div>
 
-              {/* 1. ADELANTO: Se descuenta sí o sí completo */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Adelanto Activo</label>
                 <div className="w-full p-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-700 font-bold flex items-center justify-between">
@@ -395,7 +376,6 @@ export const FormularioPagos = ({ empleados = [] }) => {
               </div>
             </div>
 
-            {/* 2. CRÉDITO DE INVERSIÓN: Abono flexible digitado por ti */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Abono a Crédito ($)</label>
@@ -406,17 +386,31 @@ export const FormularioPagos = ({ empleados = [] }) => {
                   onChange={(e) => setAbonoCreditoFlex(e.target.value)}
                   disabled={saldoCreditoInversion <= 0}
                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none disabled:opacity-50 disabled:bg-slate-100"
-                  placeholder={saldoCreditoInversion > 0 ? "Ej. 30, 150, 0..." : "0.00"}
+                  placeholder="0.00"
                 />
                 {saldoCreditoInversion > 0 && (
                   <p className="text-xs text-slate-500 mt-1">
-                    Deuda total de crédito: <strong className="text-rose-600">${saldoCreditoInversion.toFixed(2)}</strong> (Digita 0 si hoy no abonará nada).
+                    Deuda de crédito: <strong className="text-rose-600">${saldoCreditoInversion.toFixed(2)}</strong>
                   </p>
                 )}
               </div>
 
+              {/* Apartado para Horas Extras manuales */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Horas Extras / Bono Extra ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={montoHorasExtras}
+                  onChange={(e) => setMontoHorasExtras(e.target.value)}
+                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  placeholder="0.00"
+                />
+                <p className="text-xs text-slate-500 mt-1">Monto ordenado por jefatura.</p>
+              </div>
+
               {tipoPago === 'honorarios' && (
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Monto Total Pactado ($)</label>
                   <input
                     type="number"
@@ -456,6 +450,13 @@ export const FormularioPagos = ({ empleados = [] }) => {
                       <span>Monto Bruto:</span>
                       <span className="font-semibold text-slate-800">${pagoCalculado.monto_bruto.toFixed(2)}</span>
                     </div>
+
+                    {pagoCalculado.horas_extras > 0 && (
+                      <div className="flex justify-between text-sm text-emerald-700 font-medium">
+                        <span>Horas Extras:</span>
+                        <span>+${pagoCalculado.horas_extras.toFixed(2)}</span>
+                      </div>
+                    )}
                     
                     {pagoCalculado.descuento_isss > 0 && (
                       <div className="flex justify-between text-sm text-rose-600">

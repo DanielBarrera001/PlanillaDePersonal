@@ -3,7 +3,7 @@ import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/render
 import logoRanita from '../../assets/Ranita.jpeg';
 
 const styles = StyleSheet.create({
-  page: { padding: 40, fontSize: 10, fontFamily: 'Helvetica', color: '#333333' },
+  page: { padding: 40, fontSize: 10, fontFamily: 'Helvetica', color: '#333333', lineHeight: 1.5 },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, borderBottomWidth: 1, borderBottomColor: '#cccccc', paddingBottom: 10 },
   logo: { width: 45, height: 45, marginRight: 15, objectFit: 'contain' },
   headerText: { flex: 1 },
@@ -19,7 +19,7 @@ const styles = StyleSheet.create({
   totalRow: { backgroundColor: '#f3f4f6', fontFamily: 'Helvetica-Bold' },
   col: { flex: 1 },
   textRight: { textAlign: 'right' },
-  legalText: { marginTop: 20, fontSize: 9, lineHeight: 1.4, textAlign: 'justify' },
+  legalText: { marginTop: 20, fontSize: 9, lineHeight: 1.5, textAlign: 'justify' },
   signatures: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 50, paddingHorizontal: 20 },
   signatureBox: { width: '40%', borderTopWidth: 1, borderTopColor: '#000000', textAlign: 'center', paddingTop: 5 },
 });
@@ -124,6 +124,13 @@ export const ReciboSalarioPDF = ({ empleado, pago, montoLetras }) => {
               <View style={styles.tableRow}>
                 <Text style={styles.col}>Abono a Crédito</Text>
                 <Text style={[styles.col, styles.textRight]}>-${Number(pago.descuento_credito).toFixed(2)}</Text>
+              </View>
+            )}
+
+            {Number(pago.horas_extras) > 0 && (
+              <View style={styles.tableRow}>
+                <Text style={styles.col}>Horas Extras / Bonificación Extraordinaria</Text>
+                <Text style={[styles.col, styles.textRight]}>${Number(pago.horas_extras).toFixed(2)}</Text>
               </View>
             )}
 
