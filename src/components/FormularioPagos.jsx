@@ -13,6 +13,7 @@ export const FormularioPagos = ({ empleados = [] }) => {
 
   const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState('');
   const [tipoPago, setTipoPago] = useState('quincena');
+  const [periodoQuincena, setPeriodoQuincena] = useState('1'); // '1' para primera quincena, '2' para segunda
   
   // 1. ADELANTO (Descuento Único y Obligatorio)
   const [adelantoPendiente, setAdelantoPendiente] = useState(0);
@@ -27,7 +28,7 @@ export const FormularioPagos = ({ empleados = [] }) => {
   const [montoHonorario, setMontoHonorario] = useState(0);
   const [pagoCalculado, setPagoCalculado] = useState(null);
   const [guardando, setGuardando] = useState(false);
-
+  
   useEffect(() => {
     cargarMetricasResumen();
   }, [empleados]);
@@ -125,7 +126,7 @@ export const FormularioPagos = ({ empleados = [] }) => {
     let resultado = {};
     const adelantoNum = parseFloat(adelantoPendiente) || 0; 
     const abonoFlexNum = parseFloat(abonoCreditoFlex) || 0;  
-    const horasExtrasNum = parseFloat(montoHorasExtras) || 0; // Monto manual de horas extras
+    const horasExtrasNum = parseFloat(montoHorasExtras) || 0;
     const salarioBaseNum = parseFloat(empleado.salario_base) || 0;
     const esHonorarios = empleado.tipo_empleado === 'honorarios';
 
@@ -175,10 +176,29 @@ export const FormularioPagos = ({ empleados = [] }) => {
       } else if (tipoPago === 'quincena') {
         const fechaIngresoEmp = new Date(empleado.fecha_ingreso + 'T00:00:00');
         const hoy = new Date();
+        const anioActual = hoy.getFullYear();
+        const mesActual = hoy.getMonth();
         
-        const diffTiempo = hoy - fechaIngresoEmp;
-        const diasDesdeIngreso = Math.floor(diffTiempo / (1000 * 60 * 60 * 24));
-        const diasAjustados = (diasDesdeIngreso >= 0 && diasDesdeIngreso < 15) ? diasDesdeIngreso + 1 : 15;
+        let inicioDePeriodo;
+        let finDePeriodo;
+        
+        if (periodoQuincena === '1') {
+          inicioDePeriodo = new Date(anioActual, mesActual, 1);
+          finDePeriodo = new Date(anioActual, mesActual, 15);
+        } else {
+          inicioDePeriodo = new Date(anioActual, mesActual, 16);
+          finDePeriodo = new Date(anioActual, mesActual + 1, 0);
+        }
+
+        const fechaInicioEfectiva = fechaIngresoEmp > inicioDePeriodo ? fechaIngresoEmp : inicioDePeriodo;
+        
+        let diasCalculadosPeriodo = 0;
+        if (fechaInicioEfectiva <= finDePeriodo) {
+          const diffTiempo = finDePeriodo - fechaInicioEfectiva;
+          diasCalculadosPeriodo = Math.floor(diffTiempo / (1000 * 60 * 60 * 24)) + 1;
+        }
+        
+        const diasAjustados = Math.max(0, Math.min(15, diasCalculadosPeriodo));
         
         const salarioDiario = salarioBaseNum / 30;
         const montoBrutoQuincena = salarioDiario * diasAjustados;
@@ -202,7 +222,6 @@ export const FormularioPagos = ({ empleados = [] }) => {
       const finalAFP = esHonorarios ? 0 : Number(resCalc.descuentoAFP || 0);
       const finalRenta = esHonorarios ? 0 : Number(resCalc.descuentoRenta || 0);
       
-      // Sumamos las horas extras al disponible bruto antes de restar deducciones
       let disponible = (resCalc.montoNeto !== undefined ? Number(resCalc.montoNeto) : ((bruto + bono) - finalISSS - finalAFP - finalRenta)) + horasExtrasNum;
 
       const totalDescuentos = adelantoNum + abonoFlexNum;
@@ -219,7 +238,7 @@ export const FormularioPagos = ({ empleados = [] }) => {
         fecha_pago: new Date().toLocaleDateString('en-CA', { timeZone: 'America/El_Salvador' }),
         monto_bruto: bruto > 0 ? bruto : (disponible - horasExtrasNum),
         monto_bono_vacaciones: bono,
-        horas_extras: horasExtrasNum, // Guardamos el valor manual de horas extras
+        horas_extras: horasExtrasNum,
         descuento_isss: finalISSS,
         descuento_afp: finalAFP,
         descuento_renta: finalRenta,
@@ -244,13 +263,13 @@ export const FormularioPagos = ({ empleados = [] }) => {
       tipo_pago: tipoPago,
       monto_bruto: pagoCalculado.monto_bruto,
       monto_bono_vacaciones: pagoCalculado.monto_bono_vacaciones || 0,
-      horas_extras: pagoCalculado.horas_extras || 0, // Asegúrate de tener esta columna o guardarla en observaciones/monto
+      horas_extras: pagoCalculado.horas_extras || 0,
       descuento_isss: pagoCalculado.descuento_isss || 0,
       descuento_afp: pagoCalculado.descuento_afp || 0,
       descuento_renta: pagoCalculado.descuento_renta || 0,
-      adelanto_salario: pagoCalculado.adelanto_salario || 0,       
+      adelanto_salario: pagoCalculado.adelanto_salario || 0,      
       credito_otorgado: 0,
-      descuento_credito: pagoCalculado.descuento_credito || 0,     
+      descuento_credito: pagoCalculado.descuento_credito || 0,    
       monto_neto: pagoCalculado.monto_neto,
       fecha_pago: pagoCalculado.fecha_pago || new Date().toISOString().split('T')[0],
       observaciones: `Pago de ${tipoPago} ${pagoCalculado.horas_extras > 0 ? `(Incluye $${pagoCalculado.horas_extras} de horas extras)` : ''}`
@@ -368,7 +387,25 @@ export const FormularioPagos = ({ empleados = [] }) => {
                 </select>
               </div>
 
-              <div>
+              {/* Selector condicional del periodo de quincena */}
+              {tipoPago === 'quincena' && (
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Periodo de Quincena</label>
+                  <select
+                    value={periodoQuincena}
+                    onChange={(e) => {
+                      setPeriodoQuincena(e.target.value);
+                      setPagoCalculado(null);
+                    }}
+                    className="w-full p-3 bg-emerald-50/50 border border-emerald-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium text-emerald-800"
+                  >
+                    <option value="1">1ª Quincena (Días 1 al 15)</option>
+                    <option value="2">2ª Quincena (Días 16 al Fin de Mes)</option>
+                  </select>
+                </div>
+              )}
+
+              <div className={tipoPago !== 'quincena' ? 'md:col-span-2' : ''}>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Adelanto Activo</label>
                 <div className="w-full p-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-700 font-bold flex items-center justify-between">
                   <span>${adelantoPendiente.toFixed(2)}</span>
@@ -395,7 +432,6 @@ export const FormularioPagos = ({ empleados = [] }) => {
                 )}
               </div>
 
-              {/* Apartado para Horas Extras manuales */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Horas Extras / Bono Extra ($)</label>
                 <input
