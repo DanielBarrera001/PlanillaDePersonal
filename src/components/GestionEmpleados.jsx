@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { UserPlus, Calendar, PlusCircle, Trash2, Users, Edit3, X, UserCheck, Search } from 'lucide-react';
+import { UserPlus, Calendar, PlusCircle, Trash2, Users, Edit3, X, UserCheck, Search, Clock } from 'lucide-react';
 
 // Componente interno para gestionar las vacaciones de cada empleado listado
 const ControlVacacionesEmpleado = ({ empleado }) => {
@@ -155,6 +155,7 @@ export const GestionEmpleados = ({ empleados = [], onEmpleadoAgregado }) => {
     dui: '',
     cargo: '',
     tipo_empleado: 'planilla',
+    tipo_jornada: 'Tiempo Completo',
     fecha_ingreso: '',
     salario_base: ''
   });
@@ -165,6 +166,7 @@ export const GestionEmpleados = ({ empleados = [], onEmpleadoAgregado }) => {
     dui: '',
     cargo: '',
     tipo_empleado: 'planilla',
+    tipo_jornada: 'Tiempo Completo',
     fecha_ingreso: '',
     salario_base: ''
   });
@@ -224,7 +226,7 @@ export const GestionEmpleados = ({ empleados = [], onEmpleadoAgregado }) => {
       alert('Error al guardar: ' + error.message);
     } else {
       alert('Colaborador registrado exitosamente');
-      setFormulario({ nombre_completo: '', dui: '', cargo: '', tipo_empleado: 'planilla', fecha_ingreso: '', salario_base: '' });
+      setFormulario({ nombre_completo: '', dui: '', cargo: '', tipo_empleado: 'planilla', tipo_jornada: 'Tiempo Completo', fecha_ingreso: '', salario_base: '' });
       if (onEmpleadoAgregado) onEmpleadoAgregado();
     }
   };
@@ -236,6 +238,7 @@ export const GestionEmpleados = ({ empleados = [], onEmpleadoAgregado }) => {
       dui: emp.dui || '',
       cargo: emp.cargo || '',
       tipo_empleado: emp.tipo_empleado || 'planilla',
+      tipo_jornada: emp.tipo_jornada || 'Tiempo Completo',
       fecha_ingreso: emp.fecha_ingreso || '',
       salario_base: emp.salario_base || ''
     });
@@ -264,6 +267,7 @@ export const GestionEmpleados = ({ empleados = [], onEmpleadoAgregado }) => {
         dui: formEdicion.dui,
         cargo: formEdicion.cargo,
         tipo_empleado: formEdicion.tipo_empleado,
+        tipo_jornada: formEdicion.tipo_jornada,
         fecha_ingreso: formEdicion.fecha_ingreso,
         salario_base: salarioFijo
       })
@@ -413,13 +417,21 @@ export const GestionEmpleados = ({ empleados = [], onEmpleadoAgregado }) => {
                   </select>
                 </div>
                 <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Jornada</label>
+                  <select name="tipo_jornada" value={formulario.tipo_jornada} onChange={handleChange} className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
+                    <option value="Tiempo Completo">Tiempo Completo</option>
+                    <option value="Medio Tiempo">Medio Tiempo</option>
+                  </select>
+                </div>
+                <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Ingreso</label>
                   <input required type="date" name="fecha_ingreso" value={formulario.fecha_ingreso} onChange={handleChange} className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none" />
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Salario ($)</label>
-                  <input required type="number" step="0.01" name="salario_base" value={formulario.salario_base} onChange={handleChange} className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none" />
-                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Salario Base Mensual ($)</label>
+                <input required type="number" step="0.01" name="salario_base" value={formulario.salario_base} onChange={handleChange} className="w-full p-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none" />
               </div>
               
               <button type="submit" disabled={guardando} className="w-full py-3 bg-slate-800 text-white rounded-xl font-bold text-sm hover:bg-slate-900 transition-colors disabled:opacity-50 shadow-md">
@@ -492,11 +504,18 @@ export const GestionEmpleados = ({ empleados = [], onEmpleadoAgregado }) => {
                       </select>
                     </div>
                     <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">Jornada</label>
+                      <select value={formEdicion.tipo_jornada} onChange={(e) => setFormEdicion({ ...formEdicion, tipo_jornada: e.target.value })} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none">
+                        <option value="Tiempo Completo">Tiempo Completo</option>
+                        <option value="Medio Tiempo">Medio Tiempo</option>
+                      </select>
+                    </div>
+                    <div>
                       <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">Fecha Ingreso</label>
                       <input required type="date" value={formEdicion.fecha_ingreso} onChange={(e) => setFormEdicion({ ...formEdicion, fecha_ingreso: e.target.value })} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none" />
                     </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">Salario Base ($)</label>
+                    <div className="sm:col-span-2">
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-0.5">Salario Base Mensual ($)</label>
                       <input required type="number" step="0.01" value={formEdicion.salario_base} onChange={(e) => setFormEdicion({ ...formEdicion, salario_base: e.target.value })} className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs outline-none" />
                     </div>
                   </div>
@@ -518,11 +537,14 @@ export const GestionEmpleados = ({ empleados = [], onEmpleadoAgregado }) => {
                         <h4 className="font-bold text-slate-800 text-sm">{emp.nombre_completo}</h4>
                         <p className="text-[11px] text-slate-500">DUI: {emp.dui} | Cargo: <span className="font-medium text-slate-700">{emp.cargo}</span></p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap justify-end">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           emp.tipo_empleado === 'honorarios' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
                         }`}>
                           {emp.tipo_empleado === 'honorarios' ? 'Honorarios' : 'Planilla'}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
+                          {emp.tipo_jornada || 'Tiempo Completo'}
                         </span>
                         <div className="flex items-center gap-1 border-l pl-2 border-slate-200">
                           <button type="button" onClick={() => iniciarEdicion(emp)} className="p-1.5 bg-slate-100 text-slate-600 hover:bg-emerald-100 hover:text-emerald-700 rounded-lg transition-colors" title="Editar">

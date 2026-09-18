@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from './lib/supabaseClient';
 import { FormularioPagos } from './components/FormularioPagos';
 import { HistorialPagos } from './components/HistorialPagos';
+import { ControlTurnos } from './components/ControlTurnos';
 import { GestionEmpleados } from './components/GestionEmpleados';
 import { GestionCreditos } from './components/GestionCreditos';
 import { Login } from './components/Login';
@@ -123,6 +124,18 @@ export default function App() {
             </button>
 
             <button
+              onClick={() => cambiarVista('horario')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                vistaActual === 'horario' 
+                  ? 'bg-emerald-600 text-white shadow-md' 
+                  : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              Horario
+            </button>
+
+            <button
               onClick={() => cambiarVista('creditos')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
                 vistaActual === 'creditos' 
@@ -167,6 +180,10 @@ export default function App() {
 
             <div className={vistaActual === 'creditos' ? 'block' : 'hidden'}>
               <GestionCreditos />
+            </div>
+
+            <div className={vistaActual === 'horario' ? 'block' : 'hidden'}>
+              <ControlTurnos />
             </div>
           </>
         )}

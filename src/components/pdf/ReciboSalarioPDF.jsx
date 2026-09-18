@@ -73,73 +73,73 @@ export const ReciboSalarioPDF = ({ empleado, pago, montoLetras }) => {
           </View>
         </View>
 
-        {!esHonorarios ? (
-          <View style={styles.table}>
-            <View style={[styles.tableRow, styles.tableHeader]}>
-              <Text style={styles.col}>Concepto</Text>
-              <Text style={[styles.col, styles.textRight]}>Monto</Text>
-            </View>
-            
-            <View style={styles.tableRow}>
-              <Text style={styles.col}>Monto Devengado {pago.dias_calculados ? `(${pago.dias_calculados} días)` : ''}</Text>
-              <Text style={[styles.col, styles.textRight]}>${Number(pago.monto_bruto || 0).toFixed(2)}</Text>
-            </View>
-
-            {Number(pago.monto_bono_vacaciones) > 0 && (
-              <View style={styles.tableRow}>
-                <Text style={styles.col}>Bono por Vacaciones (30%)</Text>
-                <Text style={[styles.col, styles.textRight]}>${Number(pago.monto_bono_vacaciones).toFixed(2)}</Text>
-              </View>
-            )}
-
-            {Number(pago.descuento_isss) > 0 && (
-              <View style={styles.tableRow}>
-                <Text style={styles.col}>Descuento ISSS (3%)</Text>
-                <Text style={[styles.col, styles.textRight]}>-${Number(pago.descuento_isss).toFixed(2)}</Text>
-              </View>
-            )}
-
-            {Number(pago.descuento_afp) > 0 && (
-              <View style={styles.tableRow}>
-                <Text style={styles.col}>Descuento AFP (7.25%)</Text>
-                <Text style={[styles.col, styles.textRight]}>-${Number(pago.descuento_afp).toFixed(2)}</Text>
-              </View>
-            )}
-
-            {Number(pago.descuento_renta) > 0 && (
-              <View style={styles.tableRow}>
-                <Text style={styles.col}>Retención Renta</Text>
-                <Text style={[styles.col, styles.textRight]}>-${Number(pago.descuento_renta).toFixed(2)}</Text>
-              </View>
-            )}
-
-            {Number(pago.adelanto_salario) > 0 && (
-              <View style={styles.tableRow}>
-                <Text style={styles.col}>Descuento de Adelanto</Text>
-                <Text style={[styles.col, styles.textRight]}>-${Number(pago.adelanto_salario).toFixed(2)}</Text>
-              </View>
-            )}
-
-            {Number(pago.descuento_credito) > 0 && (
-              <View style={styles.tableRow}>
-                <Text style={styles.col}>Abono a Crédito</Text>
-                <Text style={[styles.col, styles.textRight]}>-${Number(pago.descuento_credito).toFixed(2)}</Text>
-              </View>
-            )}
-
-            {Number(pago.horas_extras) > 0 && (
-              <View style={styles.tableRow}>
-                <Text style={styles.col}>Horas Extras / Bonificación Extraordinaria</Text>
-                <Text style={[styles.col, styles.textRight]}>${Number(pago.horas_extras).toFixed(2)}</Text>
-              </View>
-            )}
-
-            <View style={[styles.tableRow, styles.totalRow]}>
-              <Text style={styles.col}>LÍQUIDO A RECIBIR</Text>
-              <Text style={[styles.col, styles.textRight]}>${Number(pago.monto_neto).toFixed(2)}</Text>
-            </View>
+        <View style={styles.table}>
+          <View style={[styles.tableRow, styles.tableHeader]}>
+            <Text style={styles.col}>Concepto</Text>
+            <Text style={[styles.col, styles.textRight]}>Monto</Text>
           </View>
-        ) : null}
+          
+          <View style={styles.tableRow}>
+            <Text style={styles.col}>
+              {esHonorarios ? 'Honorarios Profesionales' : `Monto Devengado ${pago.dias_calculados ? `(${pago.dias_calculados} días)` : ''}`}
+            </Text>
+            <Text style={[styles.col, styles.textRight]}>${Number(pago.monto_bruto || 0).toFixed(2)}</Text>
+          </View>
+
+          {Number(pago.monto_bono_vacaciones) > 0 && (
+            <View style={styles.tableRow}>
+              <Text style={styles.col}>Bono por Vacaciones (30%)</Text>
+              <Text style={[styles.col, styles.textRight]}>${Number(pago.monto_bono_vacaciones).toFixed(2)}</Text>
+            </View>
+          )}
+
+          {Number(pago.descuento_isss) > 0 && (
+            <View style={styles.tableRow}>
+              <Text style={styles.col}>Descuento ISSS (3%)</Text>
+              <Text style={[styles.col, styles.textRight]}>-${Number(pago.descuento_isss).toFixed(2)}</Text>
+            </View>
+          )}
+
+          {Number(pago.descuento_afp) > 0 && (
+            <View style={styles.tableRow}>
+              <Text style={styles.col}>Descuento AFP (7.25%)</Text>
+              <Text style={[styles.col, styles.textRight]}>-${Number(pago.descuento_afp).toFixed(2)}</Text>
+            </View>
+          )}
+
+          {Number(pago.descuento_renta) > 0 && (
+            <View style={styles.tableRow}>
+              <Text style={styles.col}>Retención Renta</Text>
+              <Text style={[styles.col, styles.textRight]}>-${Number(pago.descuento_renta).toFixed(2)}</Text>
+            </View>
+          )}
+
+          {Number(pago.adelanto_salario) > 0 && (
+            <View style={styles.tableRow}>
+              <Text style={styles.col}>Descuento de Adelanto</Text>
+              <Text style={[styles.col, styles.textRight]}>-${Number(pago.adelanto_salario).toFixed(2)}</Text>
+            </View>
+          )}
+
+          {Number(pago.descuento_credito) > 0 && (
+            <View style={styles.tableRow}>
+              <Text style={styles.col}>Abono a Crédito</Text>
+              <Text style={[styles.col, styles.textRight]}>-${Number(pago.descuento_credito).toFixed(2)}</Text>
+            </View>
+          )}
+
+          {Number(pago.horas_extras) > 0 && (
+            <View style={styles.tableRow}>
+              <Text style={styles.col}>Horas Extras / Bonificación Extraordinaria</Text>
+              <Text style={[styles.col, styles.textRight]}>+${Number(pago.horas_extras).toFixed(2)}</Text>
+            </View>
+          )}
+
+          <View style={[styles.tableRow, styles.totalRow]}>
+            <Text style={styles.col}>LÍQUIDO A RECIBIR</Text>
+            <Text style={[styles.col, styles.textRight]}>${Number(pago.monto_neto).toFixed(2)}</Text>
+          </View>
+        </View>
 
         <Text style={styles.legalText}>{textoLegal}</Text>
 

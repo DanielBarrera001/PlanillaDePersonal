@@ -3,13 +3,17 @@ import { supabase } from '../lib/supabaseClient';
 import { calcularAguinaldo, calcularVacaciones, calcularQuincena25, calcularIndemnizacion } from '../utils/calculos';
 import { numeroALetras } from '../utils/numeroALetras';
 import { BotonDescargaPDF } from './pdf/BotonDescargaPDF';
-import { Calculator, Receipt, CreditCard, Users, Calendar, Award, DollarSign, Clock } from 'lucide-react';
+import { Calculator, Receipt, CreditCard, Users, Calendar, Award, DollarSign, Clock, MapPin, Palmtree } from 'lucide-react';
 
 export const FormularioPagos = ({ empleados = [] }) => {
   const [totalCreditosPendientes, setTotalCreditosPendientes] = useState(0);
   const [clientesConDeuda, setClientesConDeuda] = useState(0);
   const [vacacionesTotalesUsadas, setVacacionesTotalesUsadas] = useState(0);
   const [empleadosConVacaciones, setEmpleadosConVacaciones] = useState([]);
+
+  // Estado para turnos del día y resumen de vacaciones del personal
+  const [turnosHoy, setTurnosHoy] = useState([]);
+  const [resumenVacacionesPersonal, setResumenVacacionesPersonal] = useState([]);
 
   const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState('');
   const [tipoPago, setTipoPago] = useState('quincena');
@@ -31,6 +35,7 @@ export const FormularioPagos = ({ empleados = [] }) => {
   
   useEffect(() => {
     cargarMetricasResumen();
+    cargarTurnosDelDia();
   }, [empleados]);
 
   useEffect(() => {
@@ -44,6 +49,18 @@ export const FormularioPagos = ({ empleados = [] }) => {
     }
   }, [empleadoSeleccionado]);
 
+  const cargarTurnosDelDia = async () => {
+    const hoyStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/El_Salvador' });
+    const { data: turnosData } = await supabase
+      .from('turnos_asignados')
+      .select('*')
+      .eq('fecha_turno', hoyStr);
+
+    if (turnosData) {
+      setTurnosHoy(turnosData);
+    }
+  };
+
   const cargarMetricasResumen = async () => {
     const empConVac = await Promise.all(
       empleados.map(async (emp) => {
@@ -53,10 +70,15 @@ export const FormularioPagos = ({ empleados = [] }) => {
           .eq('empleado_id', emp.id);
 
         const tomados = (vacReg || []).reduce((acc, curr) => acc + Number(curr.dias_tomados || 0), 0);
-        return { ...emp, diasTomados: tomados, diasDisponibles: Math.max(0, 15 - tomados) };
+        return { 
+          ...emp, 
+          diasTomados: tomados, 
+          diasDisponibles: Math.max(0, 15 - tomados) 
+        };
       })
     );
     setEmpleadosConVacaciones(empConVac);
+    setResumenVacacionesPersonal(empConVac);
 
     const sumaVac = empConVac.reduce((acc, curr) => acc + (curr.diasTomados || 0), 0);
     setVacacionesTotalesUsadas(sumaVac);
@@ -303,6 +325,7 @@ export const FormularioPagos = ({ empleados = [] }) => {
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
       
+      {/* ================= TARJETAS DE MÉTRICAS / WIDGETS SUPERIORES ================= */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
           <div>
@@ -338,6 +361,89 @@ export const FormularioPagos = ({ empleados = [] }) => {
         </div>
       </div>
 
+      {/* ================= WIDGETS UNO ENCIMA DEL OTRO ================= */}
+      <div className="space-y-6">
+        
+        {/* Widget 1: Turnos de Hoy (Local 1 y Local 2) */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+          <div className="flex items-center gap-2 mb-4">
+            <MapPin className="w-5 h-5 text-emerald-600" />
+            <h3 className="font-bold text-slate-800 text-base">Asignación de Turnos para Hoy</h3>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Local 1 */}
+            <div className="bg-emerald-50/50 border border-emerald-200 p-4 rounded-xl">
+              <span className="text-xs font-extrabold text-emerald-800 uppercase tracking-wider block mb-2">Local 1</span>
+              {turnosHoy.filter(t => t.local === 'Local 1').length > 0 ? (
+                <div className="space-y-1.5">
+                  {turnosHoy.filter(t => t.local === 'Local 1').map(t => (
+                    <div key={t.id} className="bg-white px-3 py-1.5 rounded-lg border border-emerald-100 text-xs shadow-2xs">
+                      <span className="font-bold text-slate-800 block">{t.nombre_persona}</span>
+                      <span className="text-[10px] text-emerald-700">{t.tipo_jornada}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 italic">Sin personal asignado hoy.</p>
+              )}
+            </div>
+
+            {/* Local 2 */}
+            <div className="bg-indigo-50/50 border border-indigo-200 p-4 rounded-xl">
+              <span className="text-xs font-extrabold text-indigo-800 uppercase tracking-wider block mb-2">Local 2</span>
+              {turnosHoy.filter(t => t.local === 'Local 2').length > 0 ? (
+                <div className="space-y-1.5">
+                  {turnosHoy.filter(t => t.local === 'Local 2').map(t => (
+                    <div key={t.id} className="bg-white px-3 py-1.5 rounded-lg border border-indigo-100 text-xs shadow-2xs">
+                      <span className="font-bold text-slate-800 block">{t.nombre_persona}</span>
+                      <span className="text-[10px] text-indigo-700">{t.tipo_jornada}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 italic">Sin personal asignado hoy.</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Widget 2: Control de Vacaciones (Días Disponibles por Colaborador) */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-2">
+              <Palmtree className="w-5 h-5 text-blue-600" />
+              <h3 className="font-bold text-slate-800 text-base">Control de Días de Vacaciones Disponibles</h3>
+            </div>
+            <span className="text-[11px] text-slate-400 font-medium">Límite anual: 15 días</span>
+          </div>
+
+          {resumenVacacionesPersonal.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-56 overflow-y-auto pr-1">
+              {resumenVacacionesPersonal.map(emp => (
+                <div key={emp.id} className="bg-slate-50 border border-slate-200 p-3 rounded-xl flex justify-between items-center text-xs">
+                  <div>
+                    <span className="font-bold text-slate-800 block truncate max-w-[140px]" title={emp.nombre_completo}>{emp.nombre_completo}</span>
+                    <span className="text-[10px] text-slate-500">Tomados: {emp.diasTomados}d</span>
+                  </div>
+                  <span className={`font-bold px-2 py-1 rounded-lg text-xs shrink-0 ${
+                    emp.diasDisponibles > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                  }`}>
+                    Disp: {emp.diasDisponibles}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-6 text-center text-slate-400 text-xs bg-slate-50 rounded-xl border border-dashed border-slate-200">
+              No hay colaboradores registrados.
+            </div>
+          )}
+        </div>
+
+      </div>
+
+      {/* ================= PROCESAMIENTO DE PLANILLA ================= */}
       <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100">
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">

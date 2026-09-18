@@ -1,4 +1,4 @@
-// 1. CÁLCULO DE AGUINALDO (Liquidación Anual)
+// 1. CÁLCULO DE AGUINALDO (Proporcional al año en curso / Corte al 20 de diciembre)
 export function calcularAguinaldo(salarioMensual, fechaIngreso, adelantos = 0, aplicaRenta = false, tasaRenta = 0, fechaCalculo = new Date()) {
   if (!fechaIngreso) return { diasCorresponden: 0, montoBruto: 0, montoNeto: 0, descuentoRenta: 0, adelantos: Number(adelantos) };
 
@@ -8,15 +8,24 @@ export function calcularAguinaldo(salarioMensual, fechaIngreso, adelantos = 0, a
   const calculo = new Date(fechaCalculo);
   const anioCalculo = calculo.getFullYear();
   
+  // El aguinaldo se calcula dentro del año fiscal (del 1 de enero al 20 de diciembre)
   const inicioAnio = new Date(anioCalculo, 0, 1);
+  const finAguinaldo = new Date(anioCalculo, 11, 20); // 20 de diciembre
+  
+  const fechaFinEfectiva = calculo > finAguinaldo ? finAguinaldo : calculo;
   const fechaInicio = ingresoOriginal > inicioAnio ? ingresoOriginal : inicioAnio;
   
-  const diffTiempo = Math.abs(calculo - fechaInicio);
-  const diasTrabajados = Math.floor(diffTiempo / (1000 * 60 * 60 * 24));
+  if (fechaInicio > fechaFinEfectiva) {
+    return { diasCorresponden: 0, montoBruto: 0, descuentoISSS: 0, descuentoAFP: 0, descuentoRenta: 0, adelantos: Number(adelantos), montoNeto: 0, anosAntiguedad: 0, diasTrabajados: 0 };
+  }
+
+  const diffTiempo = Math.abs(fechaFinEfectiva - fechaInicio);
+  const diasTrabajados = Math.floor(diffTiempo / (1000 * 60 * 60 * 24)) + 1; // Incluyendo el día inicial
   
   const salarioDiario = salarioMensual / 30;
   
-  const montoBruto = ((salarioDiario * 15) / 365) * diasTrabajados;
+  // Proporción basada en los 15 días de ley correspondientes al tramo de 1 a 3 años
+  const montoBruto = ((salarioDiario * 15) / 365) * Math.min(diasTrabajados, 365);
   const diasCorresponden = Number(((15 / 365) * diasTrabajados).toFixed(2));
 
   const descuentoRenta = aplicaRenta ? montoBruto * (tasaRenta / 100) : 0;
@@ -53,9 +62,33 @@ export function calcularVacaciones(salarioMensual, porcentajeBono = 30, adelanto
   };
 }
 
-// 3. CÁLCULO DE QUINCENA 25 (Con Adelantos - Sin retenciones de ISSS/AFP individuales)
+// 3. CÁLCULO DE QUINCENA 25 (Proporcional al tiempo laborado conforme a reglas de aguinaldo)
 export function calcularQuincena25(salarioMensual, fechaIngreso, adelantos = 0) {
-  let montoBruto = salarioMensual / 2; 
+  if (!fechaIngreso) {
+    let montoBrutoBase = salarioMensual / 2;
+    return { montoBruto: Number(montoBrutoBase.toFixed(2)), descuentoISSS: 0, descuentoAFP: 0, descuentoRenta: 0, adelantos: Number(adelantos), montoNeto: Number((montoBrutoBase - adelantos).toFixed(2)) };
+  }
+
+  const [anioIng, mesIng, diaIng] = fechaIngreso.split('-').map(Number);
+  const ingresoOriginal = new Date(anioIng, mesIng - 1, diaIng);
+
+  const hoy = new Date();
+  const anioActual = hoy.getFullYear();
+  
+  const inicioAnio = new Date(anioActual, 0, 1);
+  const fechaInicio = ingresoOriginal > inicioAnio ? ingresoOriginal : inicioAnio;
+  
+  // Si trabajó el año completo o ingresó antes del año actual, le corresponde el 50% completo (la quincena entera)
+  let montoBruto = salarioMensual / 2;
+
+  if (ingresoOriginal > inicioAnio) {
+    // Si ingresó en el transcurso del año (ej. en agosto), se calcula proporcional al tiempo laborado en el periodo
+    const diffTiempo = Math.abs(hoy - fechaInicio);
+    const diasTrabajados = Math.floor(diffTiempo / (1000 * 60 * 60 * 24)) + 1;
+    const proporcion = Math.min(diasTrabajados / 365, 1);
+    montoBruto = (salarioMensual / 2) * (proporcion * (365 / 365)); // Ajustado a la proporción del periodo
+  }
+
   const montoNeto = montoBruto - adelantos;
 
   return {
@@ -68,7 +101,7 @@ export function calcularQuincena25(salarioMensual, fechaIngreso, adelantos = 0) 
   };
 }
 
-// 4. Cálculo de vacaciones en dias
+// 4. Cálculo de vacaciones en días
 export function calcularDiasAnualidad(fechaIngreso, diasTomadosEstePeriodo = 0) {
   if (!fechaIngreso) return { diasTotales: 15, diasDisponibles: 15, periodoTexto: '' };
 
@@ -100,7 +133,7 @@ export function calcularDiasAnualidad(fechaIngreso, diasTomadosEstePeriodo = 0) 
   };
 }
 
-// 5. CÁLCULO DE INDEMNIZACIÓN (Liquidación Anual)
+// 5. CÁLCULO DE INDEMNIZACIÓN (Proporcional al ciclo actual)
 export function calcularIndemnizacion(salarioMensual, fechaIngreso, fechaRetiro = new Date(), adelantos = 0) {
   if (!fechaIngreso) {
     return { diasCorresponden: 0, anosServicio: 0, montoBruto: 0, descuentoISSS: 0, descuentoAFP: 0, descuentoRenta: 0, adelantos: Number(adelantos), montoNeto: 0 };
