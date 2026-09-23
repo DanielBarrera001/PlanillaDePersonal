@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Calendar as CalendarIcon, MapPin, Clock, User, PlusCircle, Trash2, ChevronLeft, ChevronRight, Palmtree } from 'lucide-react';
+import { Calendar as CalendarIcon, MapPin, Clock, User, PlusCircle, Trash2, ChevronLeft, ChevronRight, Palmtree, Download } from 'lucide-react';
+import { TurnosPDF } from './pdf/TurnosPDF';
+// Importa tu componente PDF cuando lo crees:
+// import { TurnosPDF } from './pdf/TurnosPDF';
 
 export const ControlTurnos = ({ empleados: empleadosProp = [] }) => {
   // Estados de datos
@@ -10,11 +13,15 @@ export const ControlTurnos = ({ empleados: empleadosProp = [] }) => {
   
   // Estados del formulario de designación
   const [localSeleccionado, setLocalSeleccionado] = useState('Local 1');
-  const [tipoJornada, setTipoJornada] = useState('Tiempo Completo'); // 'Tiempo Completo', 'Medio Tiempo', 'Descanso'
-  const [tipoPersona, setTipoPersona] = useState('formal'); // 'formal' or 'temporal'
+  const [tipoJornada, setTipoJornada] = useState('Tiempo Completo'); 
+  const [tipoPersona, setTipoPersona] = useState('formal'); 
   const [personaId, setPersonaId] = useState('');
   const [fechaTurno, setFechaTurno] = useState(new Date().toLocaleDateString('en-CA', { timeZone: 'America/El_Salvador' }));
   const [guardando, setGuardando] = useState(false);
+
+  // Estados para el rango de fechas del PDF
+  const [fechaInicioPdf, setFechaInicioPdf] = useState('');
+  const [fechaFinPdf, setFechaFinPdf] = useState('');
 
   // Estados para la navegación del calendario mensual
   const [fechaActual, setFechaActual] = useState(new Date());
@@ -42,7 +49,6 @@ export const ControlTurnos = ({ empleados: empleadosProp = [] }) => {
     if (!error && data) setTurnos(data);
   };
 
-  // Manejador para designar turno o descanso
   const handleDesignarTurno = async (e) => {
     e.preventDefault();
     if (!personaId || !fechaTurno) {
@@ -71,7 +77,6 @@ export const ControlTurnos = ({ empleados: empleadosProp = [] }) => {
       empleado_id: empId,
       temporal_id: tempId,
       nombre_persona: nombrePersona,
-      // Si es descanso, guardamos 'Local 1' para cumplir con la restricción de la base de datos
       local: tipoJornada === 'Descanso' ? 'Local 1' : localSeleccionado,
       tipo_jornada: tipoJornada,
       fecha_turno: fechaTurno
@@ -98,10 +103,10 @@ export const ControlTurnos = ({ empleados: empleadosProp = [] }) => {
 
   // --- Lógica del Calendario Mensual ---
   const anio = fechaActual.getFullYear();
-  const mes = fechaActual.getMonth(); // 0-11
+  const mes = fechaActual.getMonth();
 
-  const primerDiaMes = new Date(anio, mes, 1).getDay(); // Día de la semana (0-6)
-  const ultimoDiaMes = new Date(anio, mes + 1, 0).getDate(); // Total días del mes
+  const primerDiaMes = new Date(anio, mes, 1).getDay();
+  const ultimoDiaMes = new Date(anio, mes + 1, 0).getDate();
 
   const nombresMeses = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
@@ -112,7 +117,6 @@ export const ControlTurnos = ({ empleados: empleadosProp = [] }) => {
     setFechaActual(new Date(anio, mes + direccion, 1));
   };
 
-  // Generar matriz de días del mes
   const diasCalendario = [];
   for (let i = 0; i < primerDiaMes; i++) {
     diasCalendario.push(null);
@@ -123,12 +127,10 @@ export const ControlTurnos = ({ empleados: empleadosProp = [] }) => {
     diasCalendario.push(`${anio}-${mesStr}-${diaStr}`);
   }
 
-  // IDs de personas que YA tienen registro (turno o descanso) en la fecha seleccionada
   const idsOcupadosFecha = turnos
     .filter(t => t.fecha_turno === fechaTurno)
     .map(t => String(t.empleado_id || t.temporal_id));
 
-  // Filtrar empleados formales (si es descanso, pueden descansar todos los que no tengan nada registrado ese día)
   const empleadosFiltradosPorJornada = empleados.filter(emp => {
     const jornadaEmp = emp.tipo_jornada || 'Tiempo Completo';
     const coincideJornada = tipoJornada === 'Descanso' ? true : (jornadaEmp === tipoJornada);
@@ -136,7 +138,6 @@ export const ControlTurnos = ({ empleados: empleadosProp = [] }) => {
     return coincideJornada && noAsignadoHoy;
   });
 
-  // Filtrar temporales excluyendo los ya asignados hoy
   const temporalesDisponibles = temporales.filter(temp => {
     return !idsOcupadosFecha.includes(String(temp.id));
   });
@@ -256,8 +257,46 @@ export const ControlTurnos = ({ empleados: empleadosProp = [] }) => {
 
         </div>
 
-        {/* ================= COLUMNA DERECHA: PANEL DE DESIGNACIÓN Y LISTADO ================= */}
+        {/* ================= COLUMNA DERECHA: PANEL DE DESIGNACIÓN Y PDF ================= */}
         <div className="lg:col-span-4 space-y-6 w-full">
+          
+          {/* NUEVO BLOQUE: DESCARGAR TURNOS POR RANGO */}
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 transition-colors">
+            <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-3 flex items-center gap-2">
+              <Download className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /> Descargar Turnos en PDF
+            </h3>
+            
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Fecha Inicio</label>
+                <input
+                  type="date"
+                  value={fechaInicioPdf}
+                  onChange={(e) => setFechaInicioPdf(e.target.value)}
+                  className="w-full p-2 text-xs bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Fecha Fin</label>
+                <input
+                  type="date"
+                  value={fechaFinPdf}
+                  onChange={(e) => setFechaFinPdf(e.target.value)}
+                  className="w-full p-2 text-xs bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl outline-none"
+                />
+              </div>
+
+              { 
+              <TurnosPDF 
+                turnos={turnos.filter(t => (!fechaInicioPdf || t.fecha_turno >= fechaInicioPdf) && (!fechaFinPdf || t.fecha_turno <= fechaFinPdf))}
+                fechaInicio={fechaInicioPdf}
+                fechaFin={fechaFinPdf}
+              /> 
+              }
+            </div>
+          </div>
+
           <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 transition-colors">
             <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
               <PlusCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
@@ -266,7 +305,6 @@ export const ControlTurnos = ({ empleados: empleadosProp = [] }) => {
 
             <form onSubmit={handleDesignarTurno} className="space-y-4">
               
-              {/* Selector de Tipo de Jornada (Incluyendo Descanso) */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Tipo de Registro
@@ -274,10 +312,7 @@ export const ControlTurnos = ({ empleados: empleadosProp = [] }) => {
                 <div className="grid grid-cols-3 gap-1.5">
                   <button
                     type="button"
-                    onClick={() => {
-                      setTipoJornada('Tiempo Completo');
-                      setPersonaId('');
-                    }}
+                    onClick={() => { setTipoJornada('Tiempo Completo'); setPersonaId(''); }}
                     className={`py-2 px-2 text-[11px] font-bold rounded-xl border transition-all ${
                       tipoJornada === 'Tiempo Completo' 
                         ? 'bg-slate-800 dark:bg-emerald-600 text-white border-slate-800 dark:border-emerald-600 shadow-sm' 
@@ -288,10 +323,7 @@ export const ControlTurnos = ({ empleados: empleadosProp = [] }) => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setTipoJornada('Medio Tiempo');
-                      setPersonaId('');
-                    }}
+                    onClick={() => { setTipoJornada('Medio Tiempo'); setPersonaId(''); }}
                     className={`py-2 px-2 text-[11px] font-bold rounded-xl border transition-all ${
                       tipoJornada === 'Medio Tiempo' 
                         ? 'bg-slate-800 dark:bg-emerald-600 text-white border-slate-800 dark:border-emerald-600 shadow-sm' 
@@ -302,10 +334,7 @@ export const ControlTurnos = ({ empleados: empleadosProp = [] }) => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setTipoJornada('Descanso');
-                      setPersonaId('');
-                    }}
+                    onClick={() => { setTipoJornada('Descanso'); setPersonaId(''); }}
                     className={`py-2 px-2 text-[11px] font-bold rounded-xl border transition-all ${
                       tipoJornada === 'Descanso' 
                         ? 'bg-amber-600 text-white border-amber-600 shadow-sm' 
@@ -317,7 +346,6 @@ export const ControlTurnos = ({ empleados: empleadosProp = [] }) => {
                 </div>
               </div>
 
-              {/* Local Asignado (Se oculta si es Descanso) */}
               {tipoJornada !== 'Descanso' && (
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
@@ -346,7 +374,6 @@ export const ControlTurnos = ({ empleados: empleadosProp = [] }) => {
                 </div>
               )}
 
-              {/* Fecha del Registro */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Fecha</label>
                 <input
