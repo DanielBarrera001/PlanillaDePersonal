@@ -53,7 +53,6 @@ export const HistorialPagos = () => {
     const coincideNombre = item.empleados?.nombre_completo?.toLowerCase().includes(busqueda.toLowerCase()) ||
                            item.empleado_nombre?.toLowerCase().includes(busqueda.toLowerCase());
     
-    // Un adelanto puro es aquel cuyo monto bruto es 0 y se entregó dinero de adelanto
     const esAdelantoPuro = Number(item.monto_bruto) === 0 && Number(item.adelanto_salario) > 0;
 
     if (!coincideNombre) return false;
@@ -69,14 +68,14 @@ export const HistorialPagos = () => {
   });
 
   return (
-    <div className="w-full bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8">
+    <div className="w-screen relative left-1/2 -translate-x-1/2 px-4 sm:px-8 py-6 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors duration-200">
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-8">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <History className="w-6 h-6 text-emerald-600" />
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <History className="w-6 h-6 text-emerald-600 dark:text-emerald-500" />
             Historial de Pagos y Recibos
           </h2>
-          <p className="text-slate-500 text-sm mt-1">Consulta, reimprime o descarga los comprobantes y adelantos emitidos.</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Consulta, reimprime o descarga los comprobantes y adelantos emitidos.</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
@@ -84,7 +83,7 @@ export const HistorialPagos = () => {
             <select
               value={filtroTipo}
               onChange={(e) => setFiltroTipo(e.target.value)}
-              className="w-full sm:w-48 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 focus:ring-2 focus:ring-emerald-500 outline-none"
+              className="w-full sm:w-48 px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500 outline-none transition-colors"
             >
               <option value="todos">Todos los conceptos</option>
               <option value="adelantos">Adelantos / Préstamos</option>
@@ -97,19 +96,19 @@ export const HistorialPagos = () => {
           </div>
 
           <div className="relative flex-grow sm:w-64">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
+            <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3 top-3.5" />
             <input
               type="text"
               placeholder="Buscar colaborador..."
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+              className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-emerald-500 outline-none transition-colors"
             />
           </div>
 
           <button 
             onClick={cargarHistorial}
-            className="p-2.5 bg-slate-50 border border-slate-200 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-xl transition-all"
+            className="p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-xl transition-all"
             title="Actualizar datos"
           >
             <RefreshCcw className="w-5 h-5" />
@@ -124,7 +123,7 @@ export const HistorialPagos = () => {
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left border-collapse">
-            <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+            <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-700 transition-colors">
               <tr>
                 <th className="px-5 py-4">Fecha Emisión</th>
                 <th className="px-5 py-4">Colaborador</th>
@@ -135,41 +134,41 @@ export const HistorialPagos = () => {
                 <th className="px-5 py-4 text-center">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
               {historialFiltrado.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-5 py-12 text-center text-slate-400">
+                  <td colSpan="7" className="px-5 py-12 text-center text-slate-400 dark:text-slate-500">
                     No se encontraron registros que coincidan con los filtros.
                   </td>
                 </tr>
               ) : (
                 historialFiltrado.map((registro) => {
                   const esAdelantoPuro = Number(registro.monto_bruto) === 0 && Number(registro.adelanto_salario) > 0;
-                  
-                  // Sumamos las deducciones reales aplicadas en este pago (Adelanto descontado + Abono a crédito)
                   const totalDeduccionesAplicadas = Number(registro.adelanto_salario || 0) + Number(registro.descuento_credito || 0);
 
                   return (
-                    <tr key={registro.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="px-5 py-4 text-slate-600 font-medium">{registro.fecha_pago}</td>
-                      <td className="px-5 py-4 font-bold text-slate-800">
+                    <tr key={registro.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                      <td className="px-5 py-4 text-slate-600 dark:text-slate-400 font-medium">{registro.fecha_pago}</td>
+                      <td className="px-5 py-4 font-bold text-slate-800 dark:text-slate-200">
                         {registro.empleados?.nombre_completo || registro.empleado_nombre || 'Desconocido'}
                       </td>
                       <td className="px-5 py-4">
                         <span className={`px-3 py-1 rounded-lg text-xs font-bold tracking-wide ${
-                          esAdelantoPuro ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
+                          esAdelantoPuro 
+                            ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400' 
+                            : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
                         }`}>
                           {formatearTipo(registro.tipo_pago, esAdelantoPuro)}
                         </span>
                         {registro.observaciones && (
-                          <p className="text-[11px] text-slate-400 mt-0.5">{registro.observaciones}</p>
+                          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">{registro.observaciones}</p>
                         )}
                       </td>
-                      <td className="px-5 py-4 text-right text-slate-700">${Number(registro.monto_bruto).toFixed(2)}</td>
-                      <td className="px-5 py-4 text-right text-rose-600 font-medium">
+                      <td className="px-5 py-4 text-right text-slate-700 dark:text-slate-300">${Number(registro.monto_bruto).toFixed(2)}</td>
+                      <td className="px-5 py-4 text-right text-rose-600 dark:text-rose-400 font-medium">
                         {totalDeduccionesAplicadas > 0 ? `-$${totalDeduccionesAplicadas.toFixed(2)}` : '-'}
                       </td>
-                      <td className={`px-5 py-4 text-right font-extrabold ${esAdelantoPuro ? 'text-rose-600' : 'text-emerald-600'}`}>
+                      <td className={`px-5 py-4 text-right font-extrabold ${esAdelantoPuro ? 'text-rose-600 dark:text-rose-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
                         ${Number(registro.monto_neto).toFixed(2)}
                       </td>
                       <td className="px-5 py-4 text-center">
@@ -183,12 +182,12 @@ export const HistorialPagos = () => {
                               montoLetras={numeroALetras(registro.monto_neto)}
                             />
                           ) : (
-                            <span className="text-[11px] text-slate-400 italic">Registro Interno</span>
+                            <span className="text-[11px] text-slate-400 dark:text-slate-500 italic">Registro Interno</span>
                           )}
 
                           <button 
                             onClick={() => handleEliminarRegistro(registro.id)}
-                            className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                            className="p-1.5 text-rose-400 dark:text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors"
                             title="Eliminar registro"
                           >
                             <Trash2 className="w-4 h-4" />

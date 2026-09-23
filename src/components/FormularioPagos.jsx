@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { calcularAguinaldo, calcularVacaciones, calcularQuincena25, calcularIndemnizacion } from '../utils/calculos';
 import { numeroALetras } from '../utils/numeroALetras';
 import { BotonDescargaPDF } from './pdf/BotonDescargaPDF';
-import { Calculator, Receipt, CreditCard, Users, Calendar, Award, DollarSign, Clock, MapPin, Palmtree } from 'lucide-react';
+import { Calculator, Receipt, CreditCard, Users, Calendar, Award, DollarSign, Clock, MapPin, Palmtree, Eye, X } from 'lucide-react';
 
 export const FormularioPagos = ({ empleados = [] }) => {
   const [totalCreditosPendientes, setTotalCreditosPendientes] = useState(0);
@@ -14,6 +14,9 @@ export const FormularioPagos = ({ empleados = [] }) => {
   // Estado para turnos del día y resumen de vacaciones del personal
   const [turnosHoy, setTurnosHoy] = useState([]);
   const [resumenVacacionesPersonal, setResumenVacacionesPersonal] = useState([]);
+
+  // Estado para el previsualizador de fotos (Modal)
+  const [fotoPrevisualizando, setFotoPrevisualizando] = useState(null); // { url, nombre }
 
   const [empleadoSeleccionado, setEmpleadoSeleccionado] = useState('');
   const [tipoPago, setTipoPago] = useState('quincena');
@@ -323,39 +326,75 @@ export const FormularioPagos = ({ empleados = [] }) => {
   };
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto">
+    <div className="w-screen relative left-1/2 -translate-x-1/2 px-4 sm:px-8 py-6 space-y-8">
       
+      {/* ================= MODAL PREVISUALIZADOR DE FOTO ================= */}
+      {fotoPrevisualizando && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn"
+          onClick={() => setFotoPrevisualizando(null)}
+        >
+          <div 
+            className="bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-2xl max-w-md w-full relative flex flex-col items-center border border-slate-100 dark:border-slate-700"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setFotoPrevisualizando(null)}
+              className="absolute top-3 right-3 p-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-full transition-colors"
+              title="Cerrar"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base mb-3 text-center px-6 truncate w-full">
+              {fotoPrevisualizando.nombre}
+            </h3>
+
+            <div className="w-full h-80 bg-slate-100 dark:bg-slate-900 rounded-xl overflow-hidden flex items-center justify-center border border-slate-200 dark:border-slate-700">
+              <img 
+                src={fotoPrevisualizando.url} 
+                alt={fotoPrevisualizando.nombre} 
+                className="w-full h-full object-contain" 
+              />
+            </div>
+
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-3">Fotografía oficial</p>
+          </div>
+        </div>
+      )}
+
       {/* ================= TARJETAS DE MÉTRICAS / WIDGETS SUPERIORES ================= */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-between transition-colors">
           <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Créditos Clientes</p>
-            <h3 className="text-2xl font-extrabold text-slate-800 mt-1">${totalCreditosPendientes.toFixed(2)}</h3>
-            <p className="text-xs text-amber-600 font-medium mt-1">{clientesConDeuda} clientes con saldo</p>
+            <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Créditos Clientes</p>
+            <h3 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 mt-1">${totalCreditosPendientes.toFixed(2)}</h3>
+            <p className="text-xs text-amber-600 dark:text-amber-500 font-medium mt-1">{clientesConDeuda} clientes con saldo</p>
           </div>
-          <div className="p-4 bg-amber-50 text-amber-600 rounded-2xl">
+          <div className="p-4 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-2xl">
             <CreditCard className="w-6 h-6" />
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-between transition-colors">
           <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Personal Activo</p>
-            <h3 className="text-2xl font-extrabold text-slate-800 mt-1">{empleados.length}</h3>
-            <p className="text-xs text-emerald-600 font-medium mt-1">Colaboradores registrados</p>
+            <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Personal Activo</p>
+            <h3 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 mt-1">{empleados.length}</h3>
+            <p className="text-xs text-emerald-600 dark:text-emerald-500 font-medium mt-1">Colaboradores registrados</p>
           </div>
-          <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl">
+          <div className="p-4 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-2xl">
             <Users className="w-6 h-6" />
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-between transition-colors">
           <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Vacaciones Usadas</p>
-            <h3 className="text-2xl font-extrabold text-slate-800 mt-1">{vacacionesTotalesUsadas} días</h3>
-            <p className="text-xs text-blue-600 font-medium mt-1">Acumulado del equipo</p>
+            <p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Vacaciones Usadas</p>
+            <h3 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 mt-1">{vacacionesTotalesUsadas} días</h3>
+            <p className="text-xs text-blue-600 dark:text-blue-500 font-medium mt-1">Acumulado del equipo</p>
           </div>
-          <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl">
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl">
             <Calendar className="w-6 h-6" />
           </div>
         </div>
@@ -364,70 +403,164 @@ export const FormularioPagos = ({ empleados = [] }) => {
       {/* ================= WIDGETS UNO ENCIMA DEL OTRO ================= */}
       <div className="space-y-6">
         
-        {/* Widget 1: Turnos de Hoy (Local 1 y Local 2) */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        {/* Widget 1: Turnos y Descansos de Hoy (Local 1, Local 2 y Descansos) */}
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 transition-colors">
           <div className="flex items-center gap-2 mb-4">
-            <MapPin className="w-5 h-5 text-emerald-600" />
-            <h3 className="font-bold text-slate-800 text-base">Asignación de Turnos para Hoy</h3>
+            <MapPin className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">Asignación de Turnos y Descansos para Hoy</h3>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Local 1 */}
-            <div className="bg-emerald-50/50 border border-emerald-200 p-4 rounded-xl">
-              <span className="text-xs font-extrabold text-emerald-800 uppercase tracking-wider block mb-2">Local 1</span>
-              {turnosHoy.filter(t => t.local === 'Local 1').length > 0 ? (
+            <div className="bg-emerald-50/50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 p-4 rounded-xl">
+              <span className="text-xs font-extrabold text-emerald-800 dark:text-emerald-400 uppercase tracking-wider block mb-2">Local 1</span>
+              {turnosHoy.filter(t => t.local === 'Local 1' && t.tipo_jornada !== 'Descanso').length > 0 ? (
                 <div className="space-y-1.5">
-                  {turnosHoy.filter(t => t.local === 'Local 1').map(t => (
-                    <div key={t.id} className="bg-white px-3 py-1.5 rounded-lg border border-emerald-100 text-xs shadow-2xs">
-                      <span className="font-bold text-slate-800 block">{t.nombre_persona}</span>
-                      <span className="text-[10px] text-emerald-700">{t.tipo_jornada}</span>
-                    </div>
-                  ))}
+                  {turnosHoy.filter(t => t.local === 'Local 1' && t.tipo_jornada !== 'Descanso').map(t => {
+                    const empEncontrado = empleados.find(e => String(e.id) === String(t.empleado_id) || e.nombre_completo?.toLowerCase() === t.nombre_persona?.toLowerCase());
+                    const fotoUrl = t.foto_url || empEncontrado?.foto_url;
+
+                    return (
+                      <div key={t.id} className="bg-white dark:bg-slate-800 px-3 py-2 rounded-lg border border-emerald-100 dark:border-emerald-800/50 text-xs shadow-2xs flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          {fotoUrl ? (
+                            <div 
+                              className="relative group cursor-pointer shrink-0"
+                              onClick={() => setFotoPrevisualizando({ url: fotoUrl, nombre: t.nombre_persona })}
+                              title="Ver fotografía en grande"
+                            >
+                              <img src={fotoUrl} alt={t.nombre_persona} className="w-9 h-9 rounded-full object-cover border-2 border-emerald-500 shadow-2xs group-hover:opacity-90 transition-opacity" />
+                              <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <Eye className="w-3 h-3 text-white" />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-xs shrink-0 border border-emerald-200 dark:border-emerald-800">
+                              {t.nombre_persona ? t.nombre_persona.charAt(0).toUpperCase() : 'U'}
+                            </div>
+                          )}
+                          <div>
+                            <span className="font-bold text-slate-800 dark:text-slate-200 block">{t.nombre_persona}</span>
+                            <span className="text-[10px] text-emerald-700 dark:text-emerald-400">{t.tipo_jornada}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
-                <p className="text-xs text-slate-400 italic">Sin personal asignado hoy.</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 italic">Sin personal asignado hoy.</p>
               )}
             </div>
 
             {/* Local 2 */}
-            <div className="bg-indigo-50/50 border border-indigo-200 p-4 rounded-xl">
-              <span className="text-xs font-extrabold text-indigo-800 uppercase tracking-wider block mb-2">Local 2</span>
-              {turnosHoy.filter(t => t.local === 'Local 2').length > 0 ? (
+            <div className="bg-indigo-50/50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800/50 p-4 rounded-xl">
+              <span className="text-xs font-extrabold text-indigo-800 dark:text-indigo-400 uppercase tracking-wider block mb-2">Local 2</span>
+              {turnosHoy.filter(t => t.local === 'Local 2' && t.tipo_jornada !== 'Descanso').length > 0 ? (
                 <div className="space-y-1.5">
-                  {turnosHoy.filter(t => t.local === 'Local 2').map(t => (
-                    <div key={t.id} className="bg-white px-3 py-1.5 rounded-lg border border-indigo-100 text-xs shadow-2xs">
-                      <span className="font-bold text-slate-800 block">{t.nombre_persona}</span>
-                      <span className="text-[10px] text-indigo-700">{t.tipo_jornada}</span>
-                    </div>
-                  ))}
+                  {turnosHoy.filter(t => t.local === 'Local 2' && t.tipo_jornada !== 'Descanso').map(t => {
+                    const empEncontrado = empleados.find(e => String(e.id) === String(t.empleado_id) || e.nombre_completo?.toLowerCase() === t.nombre_persona?.toLowerCase());
+                    const fotoUrl = t.foto_url || empEncontrado?.foto_url;
+
+                    return (
+                      <div key={t.id} className="bg-white dark:bg-slate-800 px-3 py-2 rounded-lg border border-indigo-100 dark:border-indigo-800/50 text-xs shadow-2xs flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          {fotoUrl ? (
+                            <div 
+                              className="relative group cursor-pointer shrink-0"
+                              onClick={() => setFotoPrevisualizando({ url: fotoUrl, nombre: t.nombre_persona })}
+                              title="Ver fotografía en grande"
+                            >
+                              <img src={fotoUrl} alt={t.nombre_persona} className="w-9 h-9 rounded-full object-cover border-2 border-indigo-500 shadow-2xs group-hover:opacity-90 transition-opacity" />
+                              <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <Eye className="w-3 h-3 text-white" />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-xs shrink-0 border border-indigo-200 dark:border-indigo-800">
+                              {t.nombre_persona ? t.nombre_persona.charAt(0).toUpperCase() : 'U'}
+                            </div>
+                          )}
+                          <div>
+                            <span className="font-bold text-slate-800 dark:text-slate-200 block">{t.nombre_persona}</span>
+                            <span className="text-[10px] text-indigo-700 dark:text-indigo-400">{t.tipo_jornada}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
-                <p className="text-xs text-slate-400 italic">Sin personal asignado hoy.</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 italic">Sin personal asignado hoy.</p>
+              )}
+            </div>
+
+            {/* En Descanso */}
+            <div className="bg-amber-50/50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 p-4 rounded-xl">
+              <span className="text-xs font-extrabold text-amber-800 dark:text-amber-400 uppercase tracking-wider block mb-2">En Descanso Hoy</span>
+              {turnosHoy.filter(t => t.tipo_jornada === 'Descanso').length > 0 ? (
+                <div className="space-y-1.5">
+                  {turnosHoy.filter(t => t.tipo_jornada === 'Descanso').map(t => {
+                    const empEncontrado = empleados.find(e => String(e.id) === String(t.empleado_id) || e.nombre_completo?.toLowerCase() === t.nombre_persona?.toLowerCase());
+                    const fotoUrl = t.foto_url || empEncontrado?.foto_url;
+
+                    return (
+                      <div key={t.id} className="bg-white dark:bg-slate-800 px-3 py-2 rounded-lg border border-amber-100 dark:border-amber-800/50 text-xs shadow-2xs flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          {fotoUrl ? (
+                            <div 
+                              className="relative group cursor-pointer shrink-0"
+                              onClick={() => setFotoPrevisualizando({ url: fotoUrl, nombre: t.nombre_persona })}
+                              title="Ver fotografía en grande"
+                            >
+                              <img src={fotoUrl} alt={t.nombre_persona} className="w-9 h-9 rounded-full object-cover border-2 border-amber-500 shadow-2xs group-hover:opacity-90 transition-opacity" />
+                              <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <Eye className="w-3 h-3 text-white" />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center font-bold text-xs shrink-0 border border-amber-200 dark:border-amber-800">
+                              {t.nombre_persona ? t.nombre_persona.charAt(0).toUpperCase() : 'U'}
+                            </div>
+                          )}
+                          <div>
+                            <span className="font-bold text-slate-800 dark:text-slate-200 block">{t.nombre_persona}</span>
+                            <span className="text-[10px] text-amber-700 dark:text-amber-400 font-medium">🏖️ Día libre</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 dark:text-slate-500 italic">Ningún colaborador descansando hoy.</p>
               )}
             </div>
           </div>
         </div>
 
         {/* Widget 2: Control de Vacaciones (Días Disponibles por Colaborador) */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 transition-colors">
           <div className="flex justify-between items-center mb-4">
             <div className="flex items-center gap-2">
-              <Palmtree className="w-5 h-5 text-blue-600" />
-              <h3 className="font-bold text-slate-800 text-base">Control de Días de Vacaciones Disponibles</h3>
+              <Palmtree className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">Control de Días de Vacaciones Disponibles</h3>
             </div>
-            <span className="text-[11px] text-slate-400 font-medium">Límite anual: 15 días</span>
+            <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">Límite anual: 15 días</span>
           </div>
 
           {resumenVacacionesPersonal.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-56 overflow-y-auto pr-1">
               {resumenVacacionesPersonal.map(emp => (
-                <div key={emp.id} className="bg-slate-50 border border-slate-200 p-3 rounded-xl flex justify-between items-center text-xs">
+                <div key={emp.id} className="bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 p-3 rounded-xl flex justify-between items-center text-xs">
                   <div>
-                    <span className="font-bold text-slate-800 block truncate max-w-[140px]" title={emp.nombre_completo}>{emp.nombre_completo}</span>
-                    <span className="text-[10px] text-slate-500">Tomados: {emp.diasTomados}d</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200 block truncate max-w-[140px]" title={emp.nombre_completo}>{emp.nombre_completo}</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">Tomados: {emp.diasTomados}d</span>
                   </div>
                   <span className={`font-bold px-2 py-1 rounded-lg text-xs shrink-0 ${
-                    emp.diasDisponibles > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                    emp.diasDisponibles > 0 
+                      ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300' 
+                      : 'bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-300'
                   }`}>
                     Disp: {emp.diasDisponibles}
                   </span>
@@ -435,7 +568,7 @@ export const FormularioPagos = ({ empleados = [] }) => {
               ))}
             </div>
           ) : (
-            <div className="py-6 text-center text-slate-400 text-xs bg-slate-50 rounded-xl border border-dashed border-slate-200">
+            <div className="py-6 text-center text-slate-400 dark:text-slate-500 text-xs bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
               No hay colaboradores registrados.
             </div>
           )}
@@ -444,26 +577,26 @@ export const FormularioPagos = ({ empleados = [] }) => {
       </div>
 
       {/* ================= PROCESAMIENTO DE PLANILLA ================= */}
-      <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100">
+      <div className="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 transition-colors">
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-            <Calculator className="w-6 h-6 text-emerald-600" />
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <Calculator className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
             Procesamiento de Planilla
           </h2>
-          <p className="text-slate-500 text-sm">Gestiona pagos, adelantos obligatorios, abonos y horas extras.</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">Gestiona pagos, adelantos obligatorios, abonos y horas extras.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-7 space-y-6">
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Colaborador</label>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Colaborador</label>
               <select
                 value={empleadoSeleccionado}
                 onChange={(e) => {
                   setEmpleadoSeleccionado(e.target.value);
                   setPagoCalculado(null);
                 }}
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                className="w-full p-3 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
               >
                 <option value="">-- Selecciona un colaborador --</option>
                 {empleados.map((emp) => (
@@ -476,14 +609,14 @@ export const FormularioPagos = ({ empleados = [] }) => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Concepto de Pago</label>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Concepto de Pago</label>
                 <select
                   value={tipoPago}
                   onChange={(e) => {
                     setTipoPago(e.target.value);
                     setPagoCalculado(null);
                   }}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                 >
                   <option value="quincena">Salario Quincenal / Ordinario</option>
                   <option value="quincena_25">Quincena 25</option>
@@ -496,14 +629,14 @@ export const FormularioPagos = ({ empleados = [] }) => {
               {/* Selector condicional del periodo de quincena */}
               {tipoPago === 'quincena' && (
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Periodo de Quincena</label>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Periodo de Quincena</label>
                   <select
                     value={periodoQuincena}
                     onChange={(e) => {
                       setPeriodoQuincena(e.target.value);
                       setPagoCalculado(null);
                     }}
-                    className="w-full p-3 bg-emerald-50/50 border border-emerald-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium text-emerald-800"
+                    className="w-full p-3 bg-emerald-50/50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/50 text-emerald-800 dark:text-emerald-400 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
                   >
                     <option value="1">1ª Quincena (Días 1 al 15)</option>
                     <option value="2">2ª Quincena (Días 16 al Fin de Mes)</option>
@@ -512,8 +645,8 @@ export const FormularioPagos = ({ empleados = [] }) => {
               )}
 
               <div className={tipoPago !== 'quincena' ? 'md:col-span-2' : ''}>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Adelanto Activo</label>
-                <div className="w-full p-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-700 font-bold flex items-center justify-between">
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Adelanto Activo</label>
+                <div className="w-full p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-700 dark:text-slate-300 font-bold flex items-center justify-between">
                   <span>${adelantoPendiente.toFixed(2)}</span>
                 </div>
               </div>
@@ -521,45 +654,45 @@ export const FormularioPagos = ({ empleados = [] }) => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Abono a Crédito ($)</label>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Abono a Crédito ($)</label>
                 <input
                   type="number"
                   step="0.01"
                   value={abonoCreditoFlex}
                   onChange={(e) => setAbonoCreditoFlex(e.target.value)}
                   disabled={saldoCreditoInversion <= 0}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none disabled:opacity-50 disabled:bg-slate-100"
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none disabled:opacity-50 disabled:bg-slate-100 dark:disabled:bg-slate-800"
                   placeholder="0.00"
                 />
                 {saldoCreditoInversion > 0 && (
-                  <p className="text-xs text-slate-500 mt-1">
-                    Deuda de crédito: <strong className="text-rose-600">${saldoCreditoInversion.toFixed(2)}</strong>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Deuda de crédito: <strong className="text-rose-600 dark:text-rose-400">${saldoCreditoInversion.toFixed(2)}</strong>
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Horas Extras / Bono Extra ($)</label>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Horas Extras / Bono Extra ($)</label>
                 <input
                   type="number"
                   step="0.01"
                   value={montoHorasExtras}
                   onChange={(e) => setMontoHorasExtras(e.target.value)}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                   placeholder="0.00"
                 />
-                <p className="text-xs text-slate-500 mt-1">Monto ordenado por jefatura.</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Monto ordenado por jefatura.</p>
               </div>
 
               {tipoPago === 'honorarios' && (
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Monto Total Pactado ($)</label>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Monto Total Pactado ($)</label>
                   <input
                     type="number"
                     step="0.01"
                     value={montoHonorario}
                     onChange={(e) => setMontoHonorario(e.target.value)}
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
+                    className="w-full p-3 bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none"
                     placeholder="Ej. 150.00"
                   />
                 </div>
@@ -571,7 +704,7 @@ export const FormularioPagos = ({ empleados = [] }) => {
                 type="button"
                 onClick={handleCalcular}
                 disabled={!empleadoSeleccionado}
-                className="w-full py-3.5 bg-slate-800 text-white rounded-xl font-bold text-sm hover:bg-slate-900 disabled:opacity-50 transition-all shadow-md"
+                className="w-full py-3.5 bg-slate-800 dark:bg-emerald-600 text-white rounded-xl font-bold text-sm hover:bg-slate-900 dark:hover:bg-emerald-700 disabled:opacity-50 transition-all shadow-md"
               >
                 Efectuar Cálculos
               </button>
@@ -580,58 +713,58 @@ export const FormularioPagos = ({ empleados = [] }) => {
 
           <div className="lg:col-span-5">
             {pagoCalculado && empleado ? (
-              <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-2xl shadow-sm h-full flex flex-col justify-between">
+              <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/50 p-6 rounded-2xl shadow-sm h-full flex flex-col justify-between transition-colors">
                 <div>
-                  <div className="flex items-center gap-2 mb-4 text-emerald-800">
+                  <div className="flex items-center gap-2 mb-4 text-emerald-800 dark:text-emerald-400">
                     <Receipt className="w-5 h-5" />
                     <h3 className="text-lg font-bold">Desglose del Recibo</h3>
                   </div>
                   
                   <div className="space-y-3">
-                    <div className="flex justify-between text-sm text-slate-600">
+                    <div className="flex justify-between text-sm text-slate-600 dark:text-slate-400">
                       <span>Monto Bruto:</span>
-                      <span className="font-semibold text-slate-800">${pagoCalculado.monto_bruto.toFixed(2)}</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">${pagoCalculado.monto_bruto.toFixed(2)}</span>
                     </div>
 
                     {pagoCalculado.horas_extras > 0 && (
-                      <div className="flex justify-between text-sm text-emerald-700 font-medium">
+                      <div className="flex justify-between text-sm text-emerald-700 dark:text-emerald-400 font-medium">
                         <span>Horas Extras:</span>
                         <span>+${pagoCalculado.horas_extras.toFixed(2)}</span>
                       </div>
                     )}
                     
                     {pagoCalculado.descuento_isss > 0 && (
-                      <div className="flex justify-between text-sm text-rose-600">
+                      <div className="flex justify-between text-sm text-rose-600 dark:text-rose-400">
                         <span>Retención ISSS (3%):</span>
                         <span>-${pagoCalculado.descuento_isss.toFixed(2)}</span>
                       </div>
                     )}
                     
                     {pagoCalculado.descuento_afp > 0 && (
-                      <div className="flex justify-between text-sm text-rose-600">
+                      <div className="flex justify-between text-sm text-rose-600 dark:text-rose-400">
                         <span>Retención AFP (7.25%):</span>
                         <span>-${pagoCalculado.descuento_afp.toFixed(2)}</span>
                       </div>
                     )}
 
                     {pagoCalculado.adelanto_salario > 0 && (
-                      <div className="flex justify-between text-sm text-rose-600 font-medium">
+                      <div className="flex justify-between text-sm text-rose-600 dark:text-rose-400 font-medium">
                         <span>Descuento de Adelanto:</span>
                         <span>-${Number(pagoCalculado.adelanto_salario).toFixed(2)}</span>
                       </div>
                     )}
 
                     {pagoCalculado.descuento_credito > 0 && (
-                      <div className="flex justify-between text-sm text-rose-600 font-medium">
+                      <div className="flex justify-between text-sm text-rose-600 dark:text-rose-400 font-medium">
                         <span>Abono a crédito:</span>
                         <span>-${Number(pagoCalculado.descuento_credito).toFixed(2)}</span>
                       </div>
                     )}
                     
-                    <div className="pt-4 mt-2 border-t border-emerald-200">
+                    <div className="pt-4 mt-2 border-t border-emerald-200 dark:border-emerald-800/50">
                       <div className="flex justify-between items-end">
-                        <span className="text-sm font-semibold text-emerald-800">LÍQUIDO A PAGAR</span>
-                        <span className="text-3xl font-extrabold text-emerald-600">
+                        <span className="text-sm font-semibold text-emerald-800 dark:text-emerald-500">LÍQUIDO A PAGAR</span>
+                        <span className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">
                           ${pagoCalculado.monto_neto.toFixed(2)}
                         </span>
                       </div>
@@ -652,15 +785,15 @@ export const FormularioPagos = ({ empleados = [] }) => {
                     type="button"
                     onClick={handleGuardarEnSupabase}
                     disabled={guardando}
-                    className="w-full py-3 bg-white border-2 border-emerald-600 text-emerald-700 rounded-xl font-bold text-sm hover:bg-emerald-50 transition-colors"
+                    className="w-full py-3 bg-white dark:bg-slate-800 border-2 border-emerald-600 dark:border-emerald-500 text-emerald-700 dark:text-emerald-400 rounded-xl font-bold text-sm hover:bg-emerald-50 dark:hover:bg-slate-700 transition-colors"
                   >
                     {guardando ? 'Guardando en la nube...' : 'Guardar en el Historial'}
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="h-full border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center p-8 text-center text-slate-400 bg-slate-50 min-h-[250px]">
-                <Receipt className="w-12 h-12 mb-4 text-slate-300" />
+              <div className="h-full border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl flex flex-col items-center justify-center p-8 text-center text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-900/50 min-h-[250px] transition-colors">
+                <Receipt className="w-12 h-12 mb-4 text-slate-300 dark:text-slate-600" />
                 <p className="font-medium">El resumen del recibo aparecerá aquí</p>
                 <p className="text-sm mt-1">Selecciona un empleado y efectúa el cálculo.</p>
               </div>

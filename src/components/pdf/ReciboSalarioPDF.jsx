@@ -28,24 +28,26 @@ export const ReciboSalarioPDF = ({ empleado, pago, montoLetras }) => {
   const esHonorarios = empleado.tipo_empleado === 'honorarios';
 
   const getSubtitulo = (tipo) => {
-    if (esHonorarios) return 'Comprobante de Pago por Honorarios';
     switch (tipo) {
       case 'aguinaldo': return 'Comprobante de Pago de Aguinaldo';
       case 'vacaciones': return 'Comprobante de Pago de Vacaciones';
       case 'quincena_25': return 'Comprobante de Pago Quincena 25';
       case 'quincena': return 'Comprobante de Pago de Salario Quincenal';
-      default: return 'Comprobante de Pago de Salario Ordinario';
+      case 'indemnizacion': return 'Comprobante de Pago de Indemnización';
+      case 'honorarios': return 'Comprobante de Pago por Honorarios';
+      default: return esHonorarios ? 'Comprobante de Pago por Honorarios' : 'Comprobante de Pago de Salario Ordinario';
     }
   };
 
   const getTextoConcepto = (tipo) => {
-    if (esHonorarios) return 'servicios profesionales';
     switch (tipo) {
       case 'aguinaldo': return 'pago de aguinaldo anual';
       case 'vacaciones': return 'pago de vacaciones anuales y bono';
       case 'quincena_25': return 'pago de quincena 25';
       case 'quincena': return 'pago de salario quincenal';
-      default: return 'pago de salario ordinario';
+      case 'indemnizacion': return 'pago en concepto de indemnización por renuncia o despido';
+      case 'honorarios': return 'servicios profesionales';
+      default: return esHonorarios ? 'servicios profesionales' : 'pago de salario ordinario';
     }
   };
 
@@ -81,7 +83,7 @@ export const ReciboSalarioPDF = ({ empleado, pago, montoLetras }) => {
           
           <View style={styles.tableRow}>
             <Text style={styles.col}>
-              {esHonorarios ? 'Honorarios Profesionales' : `Monto Devengado ${pago.dias_calculados ? `(${pago.dias_calculados} días)` : ''}`}
+              {pago.tipo_pago === 'indemnizacion' ? 'Indemnización Laboral Acumulada' : esHonorarios ? 'Honorarios Profesionales' : `Monto Devengado ${pago.dias_calculados ? `(${pago.dias_calculados} días)` : ''}`}
             </Text>
             <Text style={[styles.col, styles.textRight]}>${Number(pago.monto_bruto || 0).toFixed(2)}</Text>
           </View>
