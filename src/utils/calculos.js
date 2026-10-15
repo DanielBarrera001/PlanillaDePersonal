@@ -44,19 +44,40 @@ export function calcularAguinaldo(salarioMensual, fechaIngreso, adelantos = 0, a
   };
 }
 
-// 2. CÁLCULO DE VACACIONES (Con Bono y Adelantos)
-export function calcularVacaciones(salarioMensual, porcentajeBono = 30, adelantos = 0) {
+// 2. CÁLCULO DE VACACIONES (Con Bono, ISSS, AFP y Adelantos)
+export function calcularVacaciones(
+  salarioMensual, 
+  porcentajeBono = 30, 
+  adelantos = 0, 
+  aplicaDescuentos = true,
+  tasaISSS = 3,       // 3% ISSS laboral
+  tasaAFP = 7.25,     // 7.25% AFP laboral
+  topeISSS = 1000     // Techo salarial ISSS ($1,000)
+) {
   const salarioQuincenal = salarioMensual / 2;
   const montoBono = salarioQuincenal * (porcentajeBono / 100);
   const montoBruto = salarioQuincenal + montoBono;
-  const montoNeto = montoBruto - adelantos;
+
+  let descuentoISSS = 0;
+  let descuentoAFP = 0;
+
+  if (aplicaDescuentos) {
+    // ISSS: 3% con tope máximo ($30)
+    const baseISSS = Math.min(montoBruto, topeISSS);
+    descuentoISSS = baseISSS * (tasaISSS / 100);
+
+    // AFP: 7.25% sobre el monto bruto total
+    descuentoAFP = montoBruto * (tasaAFP / 100);
+  }
+
+  const montoNeto = montoBruto - descuentoISSS - descuentoAFP - adelantos;
 
   return {
     salario15Dias: Number(salarioQuincenal.toFixed(2)),
     montoBono: Number(montoBono.toFixed(2)),
     montoBruto: Number(montoBruto.toFixed(2)),
-    descuentoISSS: 0,
-    descuentoAFP: 0,
+    descuentoISSS: Number(descuentoISSS.toFixed(2)),
+    descuentoAFP: Number(descuentoAFP.toFixed(2)),
     adelantos: Number(adelantos),
     montoNeto: Number(montoNeto.toFixed(2))
   };
